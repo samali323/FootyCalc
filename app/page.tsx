@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Trophy, Users, Calendar, Plane } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BarChart, LineChart } from "@/components/charts"
-import { supabase } from "@/lib/supabase/client"
-import type { Match, League } from "@/lib/types"
-import { calculateDistance, calculateEmissions } from "@/lib/calculations"
+import { Bar, BarChart, Line, LineChart, XAxis, YAxis } from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import type { Match, League } from "@/types"
+import { calculateDistance, calculateFlightEmissions } from "@/lib/calculations"
 
 export default function Home() {
+  const supabase = createClientComponentClient()
   const [selectedLeague, setSelectedLeague] = useState<string>("all")
   const [stats, setStats] = useState({
     leagues: 0,
@@ -24,13 +26,11 @@ export default function Home() {
   const currentSeason = "2024-2025"
 
   const fetchStats = useCallback(async () => {
-    // Get counts and matches in parallel
     const [leaguesCount, teamsCount] = await Promise.all([
       supabase.from("leagues").select("league_id", { count: "exact" }),
       supabase.from("teams").select("team_id", { count: "exact" }),
     ])
 
-    // Get league season data with filtering
     let leagueSeasonsQuery = supabase.from("league_seasons").select("total_matches").eq("season_id", currentSeason)
 
     if (selectedLeague !== "all") {
@@ -38,11 +38,8 @@ export default function Home() {
     }
 
     const { data: leagueSeasons } = await leagueSeasonsQuery
-
-    // Calculate total matches from league_seasons
     const totalMatches = leagueSeasons?.reduce((sum, ls) => sum + (ls.total_matches || 0), 0) || 0
 
-    // Fetch all matches with their team and airport information
     let matchesQuery = supabase
       .from("matches")
       .select(`
@@ -64,7 +61,6 @@ export default function Home() {
 
     const { data: matchesData } = await matchesQuery
 
-    // Calculate total emissions for all matches
     let totalEmissions = 0
 
     if (matchesData) {
@@ -79,9 +75,8 @@ export default function Home() {
             awayAirport.latitude,
             awayAirport.longitude,
           )
-          // Calculate round-trip emissions
-          const emissions = calculateEmissions(distance) * 2 // Multiply by 2 for round trip
-          return sum + emissions
+          const flightData = calculateFlightEmissions(distance, 35, false)
+          return sum + flightData.totalEmissions
         }
         return sum
       }, 0)
@@ -93,7 +88,7 @@ export default function Home() {
       matches: totalMatches,
       totalEmissions: Math.round(totalEmissions),
     })
-  }, [selectedLeague])
+  }, [supabase, selectedLeague])
 
   const fetchMatches = useCallback(async () => {
     let matchesQuery = supabase
@@ -129,7 +124,6 @@ export default function Home() {
     }
 
     if (matchesData) {
-      // Calculate emissions for each match
       const matchesWithEmissions = matchesData.map((match) => {
         const homeAirport = match.home_team?.home_airport?.[0]
         const awayAirport = match.away_team?.away_airport?.[0]
@@ -142,7 +136,8 @@ export default function Home() {
             awayAirport.latitude,
             awayAirport.longitude,
           )
-          emissions = calculateEmissions(distance) * 2 // Round trip
+          const flightData = calculateFlightEmissions(distance, 35, false)
+          emissions = flightData.totalEmissions
         }
 
         return {
@@ -155,7 +150,7 @@ export default function Home() {
     } else {
       setMatches([])
     }
-  }, [selectedLeague])
+  }, [supabase, selectedLeague, currentSeason])
 
   const fetchEmissionsData = useCallback(async () => {
     let query = supabase
@@ -194,7 +189,6 @@ export default function Home() {
     }
 
     if (matchesData && matchesData.length > 0) {
-      // Calculate emissions for each team
       const teamEmissions: Record<string, { name: string; emissions: number }> = {}
 
       matchesData.forEach((match) => {
@@ -208,9 +202,9 @@ export default function Home() {
             awayAirport.latitude,
             awayAirport.longitude,
           )
-          const emissions = calculateEmissions(distance) * 2 // Round trip
+          const flightData = calculateFlightEmissions(distance, 35, false)
+          const emissions = flightData.totalEmissions
 
-          // Add emissions to both teams
           const homeTeamName = match.home_team?.name || "Unknown Team"
           const awayTeamName = match.away_team?.name || "Unknown Team"
 
@@ -221,17 +215,15 @@ export default function Home() {
             teamEmissions[awayTeamName] = { name: awayTeamName, emissions: 0 }
           }
 
-          teamEmissions[homeTeamName].emissions += emissions / 2 // Split emissions between teams
+          teamEmissions[homeTeamName].emissions += emissions / 2
           teamEmissions[awayTeamName].emissions += emissions / 2
         }
       })
 
-      // Convert to array and sort by emissions
       const sortedTeams = Object.values(teamEmissions)
         .sort((a, b) => b.emissions - a.emissions)
-        .slice(0, 5) // Take top 5
+        .slice(0, 5)
 
-      // If we're showing all leagues, group by league instead
       if (selectedLeague === "all") {
         const emissionsByLeague = matchesData.reduce(
           (acc, match) => {
@@ -246,8 +238,8 @@ export default function Home() {
                 awayAirport.latitude,
                 awayAirport.longitude,
               )
-              const emissions = calculateEmissions(distance) * 2 // Round trip
-              acc[leagueName] = (acc[leagueName] || 0) + emissions
+              const flightData = calculateFlightEmissions(distance, 35, false)
+              acc[leagueName] = (acc[leagueName] || 0) + flightData.totalEmissions
             }
             return acc
           },
@@ -263,7 +255,6 @@ export default function Home() {
             .sort((a, b) => b.value - a.value),
         )
       } else {
-        // Show top 5 teams in the selected league
         setEmissionsData(
           sortedTeams.map((team) => ({
             label: team.name,
@@ -274,7 +265,7 @@ export default function Home() {
     } else {
       setEmissionsData([])
     }
-  }, [selectedLeague])
+  }, [supabase, selectedLeague, currentSeason])
 
   const fetchLeagues = useCallback(async () => {
     const { data, error } = await supabase.from("leagues").select("*")
@@ -285,7 +276,7 @@ export default function Home() {
     if (data) {
       setLeagues(data)
     }
-  }, [])
+  }, [supabase])
 
   useEffect(() => {
     fetchLeagues()
@@ -293,7 +284,67 @@ export default function Home() {
 
   useEffect(() => {
     Promise.all([fetchStats(), fetchMatches(), fetchEmissionsData()])
-  }, [selectedLeague, fetchStats, fetchMatches, fetchEmissionsData])
+  }, [fetchStats, fetchMatches, fetchEmissionsData])
+
+  const renderBarChart = (data: any[]) => (
+    <ChartContainer
+      className="h-[300px]"
+      config={{
+        emissions: {
+          label: "Emissions",
+          color: "hsl(var(--primary))",
+        },
+      }}
+    >
+      <BarChart
+        data={data.map((item) => ({
+          name: item.label,
+          emissions: Math.round(item.value),
+        }))}
+      >
+        <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={10} />
+        <YAxis tickLine={false} axisLine={false} tickMargin={10} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Bar dataKey="emissions" fill="var(--color-emissions)" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ChartContainer>
+  )
+
+  const renderLineChart = (data: Match[]) => {
+    // Group emissions by month
+    const monthlyData = data.reduce((acc: any[], match) => {
+      const date = new Date(match.date)
+      const monthYear = date.toLocaleString("default", { month: "short", year: "2-digit" })
+      const emissions = match.match_emissions?.[0]?.emissions || 0
+
+      const existingMonth = acc.find((item) => item.month === monthYear)
+      if (existingMonth) {
+        existingMonth.emissions += emissions
+      } else {
+        acc.push({ month: monthYear, emissions })
+      }
+      return acc
+    }, [])
+
+    return (
+      <ChartContainer
+        className="h-[300px]"
+        config={{
+          emissions: {
+            label: "Emissions",
+            color: "hsl(var(--primary))",
+          },
+        }}
+      >
+        <LineChart data={monthlyData}>
+          <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={10} />
+          <YAxis tickLine={false} axisLine={false} tickMargin={10} />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <Line type="monotone" dataKey="emissions" stroke="var(--color-emissions)" strokeWidth={2} />
+        </LineChart>
+      </ChartContainer>
+    )
+  }
 
   return (
     <div className="p-6 lg:ml-64">
@@ -365,18 +416,14 @@ export default function Home() {
           <CardHeader>
             <CardTitle>{selectedLeague === "all" ? "Emissions by League" : "Top 5 Teams by Emissions"}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <BarChart data={emissionsData} />
-          </CardContent>
+          <CardContent>{renderBarChart(emissionsData)}</CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>Monthly Emissions Trend</CardTitle>
           </CardHeader>
-          <CardContent>
-            <LineChart data={matches} />
-          </CardContent>
+          <CardContent>{renderLineChart(matches)}</CardContent>
         </Card>
       </div>
     </div>
