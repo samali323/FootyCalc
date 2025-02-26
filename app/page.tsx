@@ -18,7 +18,7 @@ import { calculateDistance } from "@/lib/icaoCalculations"
 
 export default function Home() {
   const [selectedLeague, setSelectedLeague] = useState<string>("all")
-  const [isRoundTrip, setIsRoundTrip] = useState(true)
+  const [isRoundTrip, setIsRoundTrip] = useState(false) // Default to one-way trips
   const [passengers, setPassengers] = useState(35)
   const [stats, setStats] = useState({
     leagues: 0,
@@ -310,7 +310,7 @@ export default function Home() {
 
           <div className="flex items-center space-x-2">
             <Switch id="dashboard-round-trip" checked={isRoundTrip} onCheckedChange={setIsRoundTrip} />
-            <Label htmlFor="dashboard-round-trip">Return Flights</Label>
+            <Label htmlFor="dashboard-round-trip">Include Return Flights</Label>
           </div>
         </div>
       </div>
