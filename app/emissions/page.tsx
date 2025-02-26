@@ -3,8 +3,9 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,8 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/lib/supabase/client"
 import type { Match, Airport } from "@/lib/types"
 import { PlaneIcon } from "@/components/icons"
-import { Car, Trees, Lightbulb, Home, Info } from "lucide-react"
-import { calculateEmissionsBetweenAirports, IcaoEmissionsResult, determineFlightType } from "@/lib/icaoCalculations"
+import { Car, Trees, Lightbulb, Home, Info, Calendar, Search } from "lucide-react"
+import {
+  calculateEmissionsBetweenAirports,
+  IcaoEmissionsResult,
+  determineFlightType,
+  calculateDistance
+} from "@/lib/icaoCalculations"
 
 interface MatchWithDetails extends Match {
   home_airport?: Airport;
@@ -32,6 +38,7 @@ interface Equivalency {
 }
 
 export default function EmissionsPage() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const matchId = searchParams.get("match")
   const [match, setMatch] = useState<MatchWithDetails | null>(null)
@@ -42,78 +49,112 @@ export default function EmissionsPage() {
   const [aircraftType, setAircraftType] = useState<"A320" | "B737">("A320") // Default aircraft type
   const [icaoResult, setIcaoResult] = useState<IcaoEmissionsResult | null>(null)
   const [activeTab, setActiveTab] = useState("icao") // Default to ICAO tab
+  const [recentMatches, setRecentMatches] = useState<Match[]>([])
 
   useEffect(() => {
-    async function fetchMatchDetails() {
-      if (!matchId) return
-
-      const { data: matchData, error: matchError } = await supabase
-        .from("matches")
-        .select(`
-          *,
-          league_seasons!inner (
-            league_id,
-            leagues (
-              name
-            )
-          )
-        `)
-        .eq("match_id", matchId)
-        .single()
-
-      if (matchError) {
-        console.error("Error fetching match:", matchError)
-        return
-      }
-
-      if (matchData) {
-        // Fetch airports for both teams
-        const [homeAirportResult, awayAirportResult] = await Promise.all([
-          supabase.from("airports").select("*").eq("team_id", matchData.home_team_id).single(),
-          supabase.from("airports").select("*").eq("team_id", matchData.away_team_id).single(),
-        ])
-
-        const homeAirport = homeAirportResult.data;
-        const awayAirport = awayAirportResult.data;
-
-        // Check if we have both airports
-        if (homeAirport && awayAirport) {
-          // Calculate emissions using ICAO methodology
-          const result = calculateEmissionsBetweenAirports(
-            homeAirport,
-            awayAirport,
-            passengers,
-            isRoundTrip
-          );
-
-          setIcaoResult(result);
-
-          setMatch({
-            ...matchData,
-            home_airport: homeAirport,
-            away_airport: awayAirport,
-            match_emissions: [
-              {
-                emissions: result.totalEmissions,
-                distance: result.distanceKm,
-              },
-            ],
-          })
-        } else {
-          setMatch({
-            ...matchData,
-            home_airport: homeAirport,
-            away_airport: awayAirport,
-            match_emissions: [{ emissions: 0, distance: 0 }],
-          })
-        }
-      }
-
+    // If there's no match ID, fetch recent matches
+    if (!matchId) {
+      fetchRecentMatches()
       setLoading(false)
+      return
     }
 
+    // Otherwise fetch the specific match
     fetchMatchDetails()
   }, [matchId, isRoundTrip, passengers, cabinClass, aircraftType])
+
+  async function fetchRecentMatches() {
+    const { data, error } = await supabase
+      .from("matches")
+      .select(`
+        match_id,
+        date,
+        home_team,
+        away_team,
+        home_city,
+        away_city
+      `)
+      .order('date', { ascending: false })
+      .limit(5)
+
+    if (error) {
+      console.error("Error fetching recent matches:", error)
+      return
+    }
+
+    if (data) {
+      setRecentMatches(data)
+    }
+  }
+
+  async function fetchMatchDetails() {
+    if (!matchId) return
+
+    const { data: matchData, error: matchError } = await supabase
+      .from("matches")
+      .select(`
+        *,
+        league_seasons!inner (
+          league_id,
+          leagues (
+            name
+          )
+        )
+      `)
+      .eq("match_id", matchId)
+      .single()
+
+    if (matchError) {
+      console.error("Error fetching match:", matchError)
+      setLoading(false)
+      return
+    }
+
+    if (matchData) {
+      // Fetch airports for both teams
+      const [homeAirportResult, awayAirportResult] = await Promise.all([
+        supabase.from("airports").select("*").eq("team_id", matchData.home_team_id).single(),
+        supabase.from("airports").select("*").eq("team_id", matchData.away_team_id).single(),
+      ])
+
+      const homeAirport = homeAirportResult.data;
+      const awayAirport = awayAirportResult.data;
+
+      // Check if we have both airports
+      if (homeAirport && awayAirport) {
+        // Calculate emissions using ICAO methodology
+        const result = calculateEmissionsBetweenAirports(
+          homeAirport,
+          awayAirport,
+          passengers,
+          isRoundTrip
+        );
+
+        setIcaoResult(result);
+
+        setMatch({
+          ...matchData,
+          home_airport: homeAirport,
+          away_airport: awayAirport,
+          match_emissions: [
+            {
+              emissions: result.totalEmissions,
+              distance: result.distanceKm,
+            },
+          ],
+        })
+      } else {
+        setMatch({
+          ...matchData,
+          home_airport: homeAirport,
+          away_airport: awayAirport,
+          match_emissions: [{ emissions: 0, distance: 0 }],
+        })
+      }
+    }
+
+    setLoading(false)
+  }
 
   // Recalculate emissions when parameters change
   useEffect(() => {
@@ -186,10 +227,100 @@ export default function EmissionsPage() {
     )
   }
 
+  // Show match selection UI if no match ID is provided
+  if (!matchId) {
+    return (
+      <div className="p-6 lg:ml-64">
+        <h1 className="text-3xl font-bold mb-6">Emissions Calculator</h1>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Select a Match</CardTitle>
+            <CardDescription>
+              Choose a match to calculate its carbon emissions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/matches')}
+                  className="flex items-center gap-2"
+                >
+                  <Search size={16} />
+                  Browse All Matches
+                </Button>
+              </div>
+
+              <h3 className="font-medium text-sm flex items-center gap-2 mb-2">
+                <Calendar size={16} />
+                Recent Matches
+              </h3>
+
+              <div className="space-y-2">
+                {recentMatches.length > 0 ? (
+                  recentMatches.map((match) => (
+                    <div
+                      key={match.match_id}
+                      className="flex justify-between items-center hover:bg-green-100/10 transition-colors rounded-lg p-4 cursor-pointer border"
+                      onClick={() => router.push(`/emissions?match=${match.match_id}`)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{match.home_team}</span>
+                        <span className="text-sm text-muted-foreground">vs</span>
+                        <span className="font-medium">{match.away_team}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(match.date).toLocaleDateString()}
+                        </span>
+                        <PlaneIcon className="h-4 w-4" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center p-4 text-muted-foreground">
+                    No recent matches found
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>About Emissions Calculation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">
+              This tool uses the ICAO (International Civil Aviation Organization) methodology to calculate the carbon
+              emissions of team travel for sports matches. The calculation takes into account:
+            </p>
+            <ul className="list-disc pl-5 space-y-2 mb-4">
+              <li>Flight distance between home and away team airports</li>
+              <li>Aircraft type and cabin configuration</li>
+              <li>Team size (number of passengers)</li>
+              <li>Whether the calculation includes return flights</li>
+              <li>Routing inefficiencies and other ICAO correction factors</li>
+            </ul>
+            <p>
+              Select a match from above or browse all matches to get started.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (!match) {
     return (
       <div className="p-6 lg:ml-64">
         <h1 className="text-3xl font-bold mb-6">Match not found</h1>
+        <Button onClick={() => router.push('/emissions')}>
+          Back to Emissions Calculator
+        </Button>
       </div>
     )
   }
