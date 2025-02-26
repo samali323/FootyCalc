@@ -10,10 +10,11 @@ import { BarChart, LineChart } from "@/components/charts"
 import { supabase } from "@/lib/supabase/client"
 import type { Match, League, Airport } from "@/lib/types"
 import {
+  calculateTotalEmissions,
   calculateEmissionsByTeam,
-  calculateEmissionsByLeague,
-  calculateTotalEmissions
+  calculateEmissionsByLeague
 } from "@/lib/emissionsHelper"
+import { calculateDistance } from "@/lib/icaoCalculations"
 
 export default function Home() {
   const [selectedLeague, setSelectedLeague] = useState<string>("all")
@@ -137,29 +138,21 @@ export default function Home() {
     }
 
     if (matchesData) {
-      // Process matches with the new ICAO emissions calculation
+      // Process matches with emissions data
       const matchesWithEmissions = matchesData.map((match) => {
         const homeAirport = airportsMap[match.home_team_id];
         const awayAirport = airportsMap[match.away_team_id];
 
         let emissions = 0;
         if (homeAirport && awayAirport) {
-          const distance = calculateDistance(
-            homeAirport.latitude,
-            homeAirport.longitude,
-            awayAirport.latitude,
-            awayAirport.longitude
-          );
-
-          // Use the new ICAO emissions calculation
-          const result = calculateEmissionsBetweenAirports(
+          // Use our helper function to calculate emissions
+          emissions = calculateMatchEmissions(
+            match,
             homeAirport,
             awayAirport,
             passengers,
             isRoundTrip
           );
-
-          emissions = result.totalEmissions;
         }
 
         return {
@@ -279,16 +272,21 @@ export default function Home() {
     }
   }, [selectedLeague, fetchStats, fetchMatches, fetchEmissionsData, airportsMap, passengers, isRoundTrip])
 
-  // Helper function for calculating distance (imported from calculations.ts)
-  function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371 // Earth's radius in kilometers
-    const φ1 = (lat1 * Math.PI) / 180
-    const φ2 = (lat2 * Math.PI) / 180
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c // Returns one-way distance in kilometers
+  // Helper function for calculating emissions for a single match
+  function calculateMatchEmissions(
+    match: Match,
+    homeAirport: Airport,
+    awayAirport: Airport,
+    passengers: number,
+    isRoundTrip: boolean
+  ): number {
+    // Use our emissionsHelper function
+    return calculateTotalEmissions(
+      [match],
+      { [match.home_team_id]: homeAirport, [match.away_team_id]: awayAirport },
+      passengers,
+      isRoundTrip
+    );
   }
 
   return (

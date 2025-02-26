@@ -1,5 +1,8 @@
 import { Match, Airport } from "./types";
-import { calculateEmissionsBetweenAirports } from "./icaoCalculations";
+import {
+calculateEmissionsBetweenAirports,
+calculateDistance
+} from "./icaoCalculations";
 
 /**
 * Calculate emissions for a match using ICAO methodology
