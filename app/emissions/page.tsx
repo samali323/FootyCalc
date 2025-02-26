@@ -4,39 +4,31 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/lib/supabase/client"
-import type { Match } from "@/lib/types"
+import type { Match, Airport } from "@/lib/types"
 import { PlaneIcon } from "@/components/icons"
-import { Car, Trees, Lightbulb, Home } from "lucide-react"
-import { calculateDistance, calculateEmissions } from "@/lib/calculations"
+import { Car, Trees, Lightbulb, Home, Info } from "lucide-react"
+import { calculateEmissionsBetweenAirports, IcaoEmissionsResult, determineFlightType } from "@/lib/icaoCalculations"
 
 interface MatchWithDetails extends Match {
-  home_airport?: {
-    iata_code: string
-    airport_name: string
-    latitude: number
-    longitude: number
-  }
-  away_airport?: {
-    iata_code: string
-    airport_name: string
-    latitude: number
-    longitude: number
-  }
+  home_airport?: Airport;
+  away_airport?: Airport;
   match_emissions?: {
-    emissions: number
-    distance: number
-  }[]
+    emissions: number;
+    distance: number;
+  }[];
 }
 
 interface Equivalency {
-  icon: React.ElementType
-  title: string
-  value: string
-  description: string
+  icon: React.ElementType;
+  title: string;
+  value: string;
+  description: string;
 }
 
 export default function EmissionsPage() {
@@ -44,13 +36,12 @@ export default function EmissionsPage() {
   const matchId = searchParams.get("match")
   const [match, setMatch] = useState<MatchWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isRoundTrip, setIsRoundTrip] = useState(false) // Default to one-way
-  const [baseDistance, setBaseDistance] = useState(0) // Store one-way distance
-  const [baseEmissions, setBaseEmissions] = useState(0) // Store one-way emissions
-
-  // Calculate current values based on round trip setting
-  const currentDistance = isRoundTrip ? baseDistance * 2 : baseDistance
-  const currentEmissions = isRoundTrip ? baseEmissions * 2 : baseEmissions
+  const [isRoundTrip, setIsRoundTrip] = useState(true) // Default to round-trip
+  const [passengers, setPassengers] = useState(35) // Default passengers
+  const [cabinClass, setCabinClass] = useState<"business" | "economy">("business") // Default cabin class
+  const [aircraftType, setAircraftType] = useState<"A320" | "B737">("A320") // Default aircraft type
+  const [icaoResult, setIcaoResult] = useState<IcaoEmissionsResult | null>(null)
+  const [activeTab, setActiveTab] = useState("icao") // Default to ICAO tab
 
   useEffect(() => {
     async function fetchMatchDetails() {
@@ -77,41 +68,42 @@ export default function EmissionsPage() {
 
       if (matchData) {
         // Fetch airports for both teams
-        const [homeAirport, awayAirport] = await Promise.all([
+        const [homeAirportResult, awayAirportResult] = await Promise.all([
           supabase.from("airports").select("*").eq("team_id", matchData.home_team_id).single(),
           supabase.from("airports").select("*").eq("team_id", matchData.away_team_id).single(),
         ])
 
-        if (homeAirport.data && awayAirport.data) {
-          // Calculate one-way base values
-          const distance = calculateDistance(
-            homeAirport.data.latitude,
-            homeAirport.data.longitude,
-            awayAirport.data.latitude,
-            awayAirport.data.longitude,
-            false,
-          )
-          const emissions = calculateEmissions(distance, 35, false)
+        const homeAirport = homeAirportResult.data;
+        const awayAirport = awayAirportResult.data;
 
-          setBaseDistance(distance)
-          setBaseEmissions(emissions)
+        // Check if we have both airports
+        if (homeAirport && awayAirport) {
+          // Calculate emissions using ICAO methodology
+          const result = calculateEmissionsBetweenAirports(
+            homeAirport,
+            awayAirport,
+            passengers,
+            isRoundTrip
+          );
+
+          setIcaoResult(result);
 
           setMatch({
             ...matchData,
-            home_airport: homeAirport.data,
-            away_airport: awayAirport.data,
+            home_airport: homeAirport,
+            away_airport: awayAirport,
             match_emissions: [
               {
-                emissions: isRoundTrip ? emissions * 2 : emissions,
-                distance: isRoundTrip ? distance * 2 : distance,
+                emissions: result.totalEmissions,
+                distance: result.distanceKm,
               },
             ],
           })
         } else {
           setMatch({
             ...matchData,
-            home_airport: homeAirport.data,
-            away_airport: awayAirport.data,
+            home_airport: homeAirport,
+            away_airport: awayAirport,
             match_emissions: [{ emissions: 0, distance: 0 }],
           })
         }
@@ -121,7 +113,35 @@ export default function EmissionsPage() {
     }
 
     fetchMatchDetails()
-  }, [matchId, isRoundTrip])
+  }, [matchId, isRoundTrip, passengers, cabinClass, aircraftType])
+
+  // Recalculate emissions when parameters change
+  useEffect(() => {
+    if (match?.home_airport && match?.away_airport) {
+      const result = calculateEmissionsBetweenAirports(
+        match.home_airport,
+        match.away_airport,
+        passengers,
+        isRoundTrip
+      );
+
+      setIcaoResult(result);
+
+      // Update match emissions for compatibility with other components
+      setMatch(prevMatch => {
+        if (!prevMatch) return null;
+        return {
+          ...prevMatch,
+          match_emissions: [
+            {
+              emissions: result.totalEmissions,
+              distance: result.distanceKm,
+            },
+          ],
+        };
+      });
+    }
+  }, [isRoundTrip, passengers, cabinClass, aircraftType]);
 
   const calculateEquivalencies = (emissions: number): Equivalency[] => {
     return [
@@ -174,7 +194,7 @@ export default function EmissionsPage() {
     )
   }
 
-  const equivalencies = calculateEquivalencies(currentEmissions)
+  const equivalencies = calculateEquivalencies(match.match_emissions?.[0]?.emissions || 0)
 
   return (
     <div className="p-6 lg:ml-64">
@@ -215,7 +235,15 @@ export default function EmissionsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>ICAO Emissions Calculation</CardTitle>
+            <CardTitle>Emissions Calculation</CardTitle>
+            <CardDescription>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="w-full">
+                  <TabsTrigger value="icao" className="flex-1">ICAO Method</TabsTrigger>
+                  <TabsTrigger value="simple" className="flex-1">Simple Method</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -234,34 +262,113 @@ export default function EmissionsPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Switch id="round-trip" checked={isRoundTrip} onCheckedChange={setIsRoundTrip} />
-                <Label htmlFor="round-trip">Include Return Flight</Label>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Flight Distance:</span>
-                  <span className="text-sm">
-                    {Math.round(currentDistance).toLocaleString()} km
-                    {isRoundTrip && " (including return)"}
-                  </span>
+
+              <TabsContent value="icao" className="space-y-4 mt-0">
+                {/* ICAO Parameters */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="passengers">Team Size</Label>
+                    <Select value={passengers.toString()} onValueChange={(v) => setPassengers(parseInt(v))}>
+                      <SelectTrigger id="passengers">
+                        <SelectValue placeholder="Team Size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25 passengers</SelectItem>
+                        <SelectItem value="30">30 passengers</SelectItem>
+                        <SelectItem value="35">35 passengers</SelectItem>
+                        <SelectItem value="40">40 passengers</SelectItem>
+                        <SelectItem value="45">45 passengers</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="aircraft">Aircraft Type</Label>
+                    <Select value={aircraftType} onValueChange={(v) => setAircraftType(v as "A320" | "B737")}>
+                      <SelectTrigger id="aircraft">
+                        <SelectValue placeholder="Aircraft Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A320">Airbus A320</SelectItem>
+                        <SelectItem value="B737">Boeing 737</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Team Size:</span>
-                  <span className="text-sm">35 passengers</span>
+
+                <div className="flex items-center space-x-2">
+                  <Switch id="round-trip" checked={isRoundTrip} onCheckedChange={setIsRoundTrip} />
+                  <Label htmlFor="round-trip">Include Return Flight</Label>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Aircraft Type:</span>
-                  <span className="text-sm">Medium-haul Commercial</span>
+
+                {icaoResult && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium">Flight Type:</span>
+                      <span className="text-sm">{icaoResult.flightType}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium">Flight Distance:</span>
+                      <span className="text-sm">
+                        {Math.round(icaoResult.distanceKm).toLocaleString()} km
+                        {isRoundTrip && " (including return)"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium">Corrected Distance:</span>
+                      <span className="text-sm">
+                        {Math.round(icaoResult.correctedDistanceKm).toLocaleString()} km
+                        <Info className="inline-block ml-1 h-3 w-3" title="Includes routing inefficiencies" />
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium">Fuel Consumption:</span>
+                      <span className="text-sm">{Math.round(icaoResult.fuelConsumption).toLocaleString()} kg</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium">Per Passenger:</span>
+                      <span className="text-sm">{(icaoResult.perPassenger).toFixed(2)} tonnes CO₂</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2 mt-2">
+                      <span className="text-sm font-medium">Total CO₂ Emissions:</span>
+                      <span className="text-sm font-bold text-red-500">
+                        {Math.round(icaoResult.totalEmissions).toLocaleString()} tonnes
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="simple" className="space-y-4 mt-0">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Switch id="simple-round-trip" checked={isRoundTrip} onCheckedChange={setIsRoundTrip} />
+                  <Label htmlFor="simple-round-trip">Include Return Flight</Label>
                 </div>
-                <div className="flex justify-between border-t pt-2 mt-2">
-                  <span className="text-sm font-medium">Total CO₂ Emissions:</span>
-                  <span className="text-sm font-bold text-red-500">
-                    {Math.round(currentEmissions).toLocaleString()} tonnes
-                    {isRoundTrip && " (including return)"}
-                  </span>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Flight Distance:</span>
+                    <span className="text-sm">
+                      {Math.round(match.match_emissions?.[0]?.distance || 0).toLocaleString()} km
+                      {isRoundTrip && " (including return)"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Team Size:</span>
+                    <span className="text-sm">35 passengers</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Aircraft Type:</span>
+                    <span className="text-sm">Medium-haul Commercial</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-2 mt-2">
+                    <span className="text-sm font-medium">Total CO₂ Emissions:</span>
+                    <span className="text-sm font-bold text-red-500">
+                      {Math.round(match.match_emissions?.[0]?.emissions || 0).toLocaleString()} tonnes
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </TabsContent>
             </div>
           </CardContent>
         </Card>
@@ -287,4 +394,3 @@ export default function EmissionsPage() {
     </div>
   )
 }
-

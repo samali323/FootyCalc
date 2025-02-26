@@ -4,13 +4,21 @@ import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Trophy, Users, Calendar, Plane } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import { BarChart, LineChart } from "@/components/charts"
 import { supabase } from "@/lib/supabase/client"
-import type { Match, League } from "@/lib/types"
-import { calculateDistance, calculateEmissions } from "@/lib/calculations"
+import type { Match, League, Airport } from "@/lib/types"
+import {
+  calculateEmissionsByTeam,
+  calculateEmissionsByLeague,
+  calculateTotalEmissions
+} from "@/lib/emissionsHelper"
 
 export default function Home() {
   const [selectedLeague, setSelectedLeague] = useState<string>("all")
+  const [isRoundTrip, setIsRoundTrip] = useState(true)
+  const [passengers, setPassengers] = useState(35)
   const [stats, setStats] = useState({
     leagues: 0,
     teams: 0,
@@ -19,12 +27,34 @@ export default function Home() {
   })
   const [matches, setMatches] = useState<Match[]>([])
   const [leagues, setLeagues] = useState<League[]>([])
+  const [leagueNames, setLeagueNames] = useState<Record<string, string>>({})
+  const [airportsMap, setAirportsMap] = useState<Record<string, Airport>>({})
   const [emissionsData, setEmissionsData] = useState<any[]>([])
 
   const currentSeason = "2024-2025"
 
+  // Fetch all airports and create a map by team_id
+  const fetchAirports = useCallback(async () => {
+    const { data: airportsData, error } = await supabase
+      .from("airports")
+      .select("*")
+
+    if (error) {
+      console.error("Error fetching airports:", error)
+      return
+    }
+
+    if (airportsData) {
+      const airportsById: Record<string, Airport> = {}
+      airportsData.forEach(airport => {
+        airportsById[airport.team_id] = airport
+      })
+      setAirportsMap(airportsById)
+    }
+  }, [])
+
   const fetchStats = useCallback(async () => {
-    // Get counts and matches in parallel
+    // Get counts in parallel
     const [leaguesCount, teamsCount] = await Promise.all([
       supabase.from("leagues").select("league_id", { count: "exact" }),
       supabase.from("teams").select("team_id", { count: "exact" }),
@@ -42,19 +72,13 @@ export default function Home() {
     // Calculate total matches from league_seasons
     const totalMatches = leagueSeasons?.reduce((sum, ls) => sum + (ls.total_matches || 0), 0) || 0
 
-    // Fetch all matches with their team and airport information
+    // Get matches for emissions calculation
     let matchesQuery = supabase
       .from("matches")
       .select(`
         *,
-        home_team:teams!matches_home_team_id_fkey(
-          team_id,
-          home_airport:airports(latitude, longitude)
-        ),
-        away_team:teams!matches_away_team_id_fkey(
-          team_id,
-          away_airport:airports(latitude, longitude)
-        )
+        home_team_id,
+        away_team_id
       `)
       .eq("season_id", currentSeason)
 
@@ -64,27 +88,15 @@ export default function Home() {
 
     const { data: matchesData } = await matchesQuery
 
-    // Calculate total emissions for all matches
+    // Calculate total emissions using the new helper
     let totalEmissions = 0
-
-    if (matchesData) {
-      totalEmissions = matchesData.reduce((sum, match) => {
-        const homeAirport = match.home_team?.home_airport?.[0]
-        const awayAirport = match.away_team?.away_airport?.[0]
-
-        if (homeAirport && awayAirport) {
-          const distance = calculateDistance(
-            homeAirport.latitude,
-            homeAirport.longitude,
-            awayAirport.latitude,
-            awayAirport.longitude,
-          )
-          // Calculate round-trip emissions
-          const emissions = calculateEmissions(distance) * 2 // Multiply by 2 for round trip
-          return sum + emissions
-        }
-        return sum
-      }, 0)
+    if (matchesData && Object.keys(airportsMap).length > 0) {
+      totalEmissions = calculateTotalEmissions(
+        matchesData,
+        airportsMap,
+        passengers,
+        isRoundTrip
+      )
     }
 
     setStats({
@@ -93,7 +105,7 @@ export default function Home() {
       matches: totalMatches,
       totalEmissions: Math.round(totalEmissions),
     })
-  }, [selectedLeague])
+  }, [selectedLeague, airportsMap, passengers, isRoundTrip])
 
   const fetchMatches = useCallback(async () => {
     let matchesQuery = supabase
@@ -106,14 +118,10 @@ export default function Home() {
             name
           )
         ),
-        home_team:teams!matches_home_team_id_fkey(
-          team_id,
-          home_airport:airports(latitude, longitude)
-        ),
-        away_team:teams!matches_away_team_id_fkey(
-          team_id,
-          away_airport:airports(latitude, longitude)
-        )
+        home_team_id,
+        away_team_id,
+        home_team,
+        away_team
       `)
       .eq("season_id", currentSeason)
       .order("date", { ascending: true })
@@ -129,20 +137,29 @@ export default function Home() {
     }
 
     if (matchesData) {
-      // Calculate emissions for each match
+      // Process matches with the new ICAO emissions calculation
       const matchesWithEmissions = matchesData.map((match) => {
-        const homeAirport = match.home_team?.home_airport?.[0]
-        const awayAirport = match.away_team?.away_airport?.[0]
+        const homeAirport = airportsMap[match.home_team_id];
+        const awayAirport = airportsMap[match.away_team_id];
 
-        let emissions = 0
+        let emissions = 0;
         if (homeAirport && awayAirport) {
           const distance = calculateDistance(
             homeAirport.latitude,
             homeAirport.longitude,
             awayAirport.latitude,
-            awayAirport.longitude,
-          )
-          emissions = calculateEmissions(distance) * 2 // Round trip
+            awayAirport.longitude
+          );
+
+          // Use the new ICAO emissions calculation
+          const result = calculateEmissionsBetweenAirports(
+            homeAirport,
+            awayAirport,
+            passengers,
+            isRoundTrip
+          );
+
+          emissions = result.totalEmissions;
         }
 
         return {
@@ -155,7 +172,7 @@ export default function Home() {
     } else {
       setMatches([])
     }
-  }, [selectedLeague])
+  }, [selectedLeague, airportsMap, passengers, isRoundTrip])
 
   const fetchEmissionsData = useCallback(async () => {
     let query = supabase
@@ -164,21 +181,15 @@ export default function Home() {
         match_id,
         league_id,
         date,
+        home_team_id,
+        away_team_id,
+        home_team,
+        away_team,
         league_seasons!inner (
           league_id,
           leagues (
             name
           )
-        ),
-        home_team:teams!matches_home_team_id_fkey(
-          team_id,
-          name,
-          home_airport:airports(latitude, longitude)
-        ),
-        away_team:teams!matches_away_team_id_fkey(
-          team_id,
-          name,
-          away_airport:airports(latitude, longitude)
         )
       `)
       .eq("season_id", currentSeason)
@@ -194,87 +205,57 @@ export default function Home() {
     }
 
     if (matchesData && matchesData.length > 0) {
-      // Calculate emissions for each team
-      const teamEmissions: Record<string, { name: string; emissions: number }> = {}
-
-      matchesData.forEach((match) => {
-        const homeAirport = match.home_team?.home_airport?.[0]
-        const awayAirport = match.away_team?.away_airport?.[0]
-
-        if (homeAirport && awayAirport) {
-          const distance = calculateDistance(
-            homeAirport.latitude,
-            homeAirport.longitude,
-            awayAirport.latitude,
-            awayAirport.longitude,
-          )
-          const emissions = calculateEmissions(distance) * 2 // Round trip
-
-          // Add emissions to both teams
-          const homeTeamName = match.home_team?.name || "Unknown Team"
-          const awayTeamName = match.away_team?.name || "Unknown Team"
-
-          if (!teamEmissions[homeTeamName]) {
-            teamEmissions[homeTeamName] = { name: homeTeamName, emissions: 0 }
-          }
-          if (!teamEmissions[awayTeamName]) {
-            teamEmissions[awayTeamName] = { name: awayTeamName, emissions: 0 }
-          }
-
-          teamEmissions[homeTeamName].emissions += emissions / 2 // Split emissions between teams
-          teamEmissions[awayTeamName].emissions += emissions / 2
+      // Prepare league names map for emissions calculation
+      const leagueNamesMap: Record<string, string> = {};
+      matchesData.forEach(match => {
+        if (match.league_seasons?.leagues?.name && match.league_id) {
+          leagueNamesMap[match.league_id] = match.league_seasons.leagues.name;
         }
-      })
+      });
+      setLeagueNames(leagueNamesMap);
 
-      // Convert to array and sort by emissions
-      const sortedTeams = Object.values(teamEmissions)
-        .sort((a, b) => b.emissions - a.emissions)
-        .slice(0, 5) // Take top 5
-
-      // If we're showing all leagues, group by league instead
+      // If showing all leagues, group by league
       if (selectedLeague === "all") {
-        const emissionsByLeague = matchesData.reduce(
-          (acc, match) => {
-            const leagueName = match.league_seasons?.leagues?.name || match.league_id
-            const homeAirport = match.home_team?.home_airport?.[0]
-            const awayAirport = match.away_team?.away_airport?.[0]
-
-            if (homeAirport && awayAirport) {
-              const distance = calculateDistance(
-                homeAirport.latitude,
-                homeAirport.longitude,
-                awayAirport.latitude,
-                awayAirport.longitude,
-              )
-              const emissions = calculateEmissions(distance) * 2 // Round trip
-              acc[leagueName] = (acc[leagueName] || 0) + emissions
-            }
-            return acc
-          },
-          {} as Record<string, number>,
-        )
+        // Use helper to calculate emissions by league
+        const leagueEmissions = calculateEmissionsByLeague(
+          matchesData,
+          airportsMap,
+          leagueNamesMap,
+          passengers,
+          isRoundTrip
+        );
 
         setEmissionsData(
-          Object.entries(emissionsByLeague)
-            .map(([league, emissions]) => ({
-              label: league,
+          Object.values(leagueEmissions)
+            .map(({ name, emissions }) => ({
+              label: name,
               value: emissions,
             }))
-            .sort((a, b) => b.value - a.value),
-        )
+            .sort((a, b) => b.value - a.value)
+        );
       } else {
         // Show top 5 teams in the selected league
+        const teamEmissions = calculateEmissionsByTeam(
+          matchesData,
+          airportsMap,
+          passengers,
+          isRoundTrip
+        );
+
         setEmissionsData(
-          sortedTeams.map((team) => ({
-            label: team.name,
-            value: team.emissions,
-          })),
-        )
+          Object.values(teamEmissions)
+            .map(({ name, emissions }) => ({
+              label: name,
+              value: emissions,
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5)
+        );
       }
     } else {
       setEmissionsData([])
     }
-  }, [selectedLeague])
+  }, [selectedLeague, airportsMap, passengers, isRoundTrip])
 
   const fetchLeagues = useCallback(async () => {
     const { data, error } = await supabase.from("leagues").select("*")
@@ -289,17 +270,32 @@ export default function Home() {
 
   useEffect(() => {
     fetchLeagues()
-  }, [fetchLeagues])
+    fetchAirports()
+  }, [fetchLeagues, fetchAirports])
 
   useEffect(() => {
-    Promise.all([fetchStats(), fetchMatches(), fetchEmissionsData()])
-  }, [selectedLeague, fetchStats, fetchMatches, fetchEmissionsData])
+    if (Object.keys(airportsMap).length > 0) {
+      Promise.all([fetchStats(), fetchMatches(), fetchEmissionsData()])
+    }
+  }, [selectedLeague, fetchStats, fetchMatches, fetchEmissionsData, airportsMap, passengers, isRoundTrip])
+
+  // Helper function for calculating distance (imported from calculations.ts)
+  function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371 // Earth's radius in kilometers
+    const φ1 = (lat1 * Math.PI) / 180
+    const φ2 = (lat2 * Math.PI) / 180
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c // Returns one-way distance in kilometers
+  }
 
   return (
     <div className="p-6 lg:ml-64">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Dashboard Overview</h1>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           <Select value={selectedLeague} onValueChange={setSelectedLeague}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Select League" />
@@ -313,6 +309,11 @@ export default function Home() {
               ))}
             </SelectContent>
           </Select>
+
+          <div className="flex items-center space-x-2">
+            <Switch id="dashboard-round-trip" checked={isRoundTrip} onCheckedChange={setIsRoundTrip} />
+            <Label htmlFor="dashboard-round-trip">Return Flights</Label>
+          </div>
         </div>
       </div>
 
@@ -355,7 +356,10 @@ export default function Home() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalEmissions.toLocaleString()} tonnes</div>
-            <p className="text-xs text-muted-foreground">{currentSeason} Season</p>
+            <p className="text-xs text-muted-foreground">
+              {currentSeason} Season
+              {isRoundTrip ? " (including return flights)" : " (one-way flights)"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -382,4 +386,3 @@ export default function Home() {
     </div>
   )
 }
-
