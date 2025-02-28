@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+/* Sports Emissions - Premium Branded Scrollbar */
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a; /* Dark blue-black background */
+  border-radius: 0;
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.8);
+  background-image: 
+    linear-gradient(90deg, 
+      rgba(16, 185, 129, 0.05) 1px, 
+      transparent 1px
+    );
+  background-size: 4px 100%;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #059669 0%, #10b981 50%, #059669 100%);
+  border-radius: 2px;
+  border-left: 2px solid #0f172a;
+  border-right: 2px solid #0f172a;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #047857 0%, #10b981 50%, #047857 100%);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.7);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #10b981;
+}
+
+/* Custom corner styling */
+::-webkit-scrollbar-corner {
+  background: #0f172a;
+  background-image: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+}
+
+/* Animated hover effect */
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.5); }
+  50% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.8); }
+  100% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.5); }
+}
+
+::-webkit-scrollbar-thumb:hover {
+  animation: pulse-glow 1.5s infinite;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #10b981 #0f172a;
+}
+
+/* Only apply scrollbar to html and body by default */
+html, body {
+  scrollbar-width: thin;
+  scrollbar-color: #10b981 #0f172a;
+}
+
+/* For specific elements that need scrolling */
+.scrollable-content {
+  scrollbar-width: thin;
+  scrollbar-color: #10b981 #0f172a;
+}
