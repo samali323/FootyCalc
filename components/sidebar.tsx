@@ -233,7 +233,7 @@ export function Sidebar() {
             </Link>
           </div>
           
-          {/* Footer with version */}
+          
           <div className="mt-auto px-4 py-3 text-center">
             <div className="text-xs text-gray-500">v1.2.0</div>
           </div>
