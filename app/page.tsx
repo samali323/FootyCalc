@@ -796,50 +796,7 @@ export default function Home() {
   )}
             </div>
 
-            {/* Emissions reduction goal */}
-            {/* <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Emissions Reduction Goal</CardTitle>
-                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20">
-                    15% Target
-                  </Badge>
-                </div>
-                <CardDescription>
-                  Track progress toward your carbon reduction target
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Current Reduction: {stats.emissionsReduction.toLocaleString()} tonnes</span>
-                    <span>Goal: {stats.emissionsGoal.toLocaleString()} tonnes</span>
-                  </div>
-                  <Progress value={stats.progress} className="h-2" />
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>{stats.progress}% Complete</span>
-                    <HoverCard>
-                      <HoverCardTrigger asChild>
-                        <Button variant="link" size="sm" className="h-auto p-0 text-muted-foreground">
-                          How to improve?
-                        </Button>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-80">
-                        <div className="space-y-2">
-                          <h4 className="font-medium">Reduction Strategies</h4>
-                          <ul className="text-sm list-disc pl-4 space-y-1">
-                            <li>Optimize travel schedules</li>
-                            <li>Use direct flights when possible</li>
-                            <li>Consider train travel for shorter distances</li>
-                            <li>Implement carbon offset programs</li>
-                          </ul>
-                        </div>
-                      </HoverCardContent>
-                    </HoverCard>
-                  </div>
-                </div>
-              </CardContent>
-            </Card> */}
+           
 
             {/* Charts */}
             
@@ -1022,7 +979,7 @@ export default function Home() {
                         <th className="text-left p-2">League</th>
                         <th className="text-right p-2">Distance (km)</th>
                         <th className="text-right p-2">Emissions (t)</th>
-                        <th className="text-right p-2">Flight Type</th>
+                      
                       </tr>
                     </thead>
                     <tbody>
@@ -1043,9 +1000,7 @@ export default function Home() {
                           <td className="p-2 text-right">
                             {Math.round(match.match_emissions[0].emissions).toLocaleString()}
                           </td>
-                          <td className="p-2 text-right">
-                            {match.flightStats?.flightType || 'Unknown'}
-                          </td>
+                        
                         </tr>
                       ))}
                     </tbody>

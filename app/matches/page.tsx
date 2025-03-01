@@ -331,21 +331,26 @@ export default function MatchesPage() {
                       onClick={() => router.push(`/emissions?match=${match.match_id}`)}
                     >
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                        <div className="md:col-span-5 flex items-center justify-between">
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium text-white text-lg">{match.home_team}</span>
-                            <div className="flex items-center mt-1 text-gray-400">
-                              <MapPin className="h-3 w-3 mr-1" />
+                        <div className="md:col-span-5 grid grid-cols-5 items-center">
+                          {/* Home Team - 2/5 width */}
+                          <div className="col-span-2 text-right pr-2">
+                            <div className="font-medium text-white text-lg">{match.home_team}</div>
+                            <div className="flex items-center justify-end mt-1 text-gray-400">
                               <span className="text-xs">{match.home_city}</span>
+                              <MapPin className="h-3 w-3 ml-1" />
                             </div>
                           </div>
                           
-                          <div className="mx-3 px-3 py-1 bg-gray-800 rounded-full text-gray-300 font-medium text-sm">
-                            vs
+                          {/* VS Badge - 1/5 width */}
+                          <div className="col-span-1 flex justify-center">
+                            <div className="w-10 h-6 bg-gray-800 rounded-full text-gray-300 font-medium text-sm flex items-center justify-center">
+                              vs
+                            </div>
                           </div>
                           
-                          <div className="flex flex-col items-end">
-                            <span className="font-medium text-white text-lg">{match.away_team}</span>
+                          {/* Away Team - 2/5 width */}
+                          <div className="col-span-2 text-left pl-2">
+                            <div className="font-medium text-white text-lg">{match.away_team}</div>
                             <div className="flex items-center mt-1 text-gray-400">
                               <MapPin className="h-3 w-3 mr-1" />
                               <span className="text-xs">{match.away_city}</span>

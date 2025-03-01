@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Home, Users, Calendar, BarChart, Leaf, ChevronRight, Settings, HelpCircle } from "lucide-react"
+import { Home, Users, Calendar, BarChart, Leaf, ChevronRight, Menu, X, Settings, HelpCircle } from "lucide-react"
 import { getCarbonOffsetStatus } from "@/lib/carbonOffset"
 
 const navigation = [
@@ -12,16 +12,12 @@ const navigation = [
   { name: "Matches & Emissions", href: "/matches", icon: Calendar },
 ]
 
-const secondaryNavigation = [
-  { name: "Settings", href: "/settings", icon: Settings },
-  { name: "Help & Support", href: "/help", icon: HelpCircle },
-]
-
 export function Sidebar() {
   const pathname = usePathname()
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null)
-  const [offsetPercentage, setOffsetPercentage] = useState<number | null>(null)
+  const [hoveredItem, setHoveredItem] = useState(null)
+  const [offsetPercentage, setOffsetPercentage] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const fetchOffsetData = async () => {
@@ -38,6 +34,11 @@ export function Sidebar() {
     
     fetchOffsetData()
   }, [])
+
+  // Close mobile menu when navigating to a new page
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [pathname])
 
   const renderNavLink = (item, section) => {
     const { name, href, icon: Icon } = item
@@ -83,8 +84,58 @@ export function Sidebar() {
   }
 
   return (
-    <div className="hidden lg:block lg:w-72 shrink-0">
-      <div className="fixed inset-y-0 z-20 flex h-full w-72 flex-col overflow-hidden rounded-r-xl bg-gray-900 shadow-xl">
+    <>
+      {/* Mobile menu button - moved to right side */}
+      <div className="fixed top-4 right-4 z-30 lg:hidden">
+        <button
+          type="button"
+          className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-900 text-gray-200 shadow-lg"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? (
+            <X className="h-6 w-6" />
+          ) : (
+            <Menu className="h-6 w-6" />
+          )}
+        </button>
+      </div>
+
+      {/* Mobile overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Desktop sidebar - left side */}
+      <div className="hidden lg:block lg:fixed lg:inset-y-0 lg:left-0 lg:z-20 lg:w-72">
+        <div className="flex h-full flex-col overflow-hidden rounded-r-xl bg-gray-900 shadow-xl">
+          {/* Sidebar content for desktop */}
+          {renderSidebarContent()}
+        </div>
+      </div>
+
+      {/* Mobile sidebar - right side */}
+      <div 
+        className={`fixed inset-y-0 right-0 z-20 w-72 transform overflow-y-auto transition-transform duration-300 ease-in-out lg:hidden ${
+          isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex h-full flex-col overflow-hidden rounded-l-xl bg-gray-900 shadow-xl">
+          {/* Sidebar content for mobile */}
+          {renderSidebarContent()}
+        </div>
+      </div>
+
+      {/* Spacer div to push content over on large screens */}
+      <div className="hidden lg:block lg:w-72"></div>
+    </>
+  )
+
+  function renderSidebarContent() {
+    return (
+      <>
         {/* Logo header */}
         <div className="flex h-16 items-center justify-start px-6 bg-gradient-to-r from-emerald-800 to-gray-900 border-b border-gray-800">
           <div className="flex items-center">
@@ -155,21 +206,39 @@ export function Sidebar() {
             </div>
           </div>
           
-          {/* Secondary Navigation */}
-          {/* <div className="px-4 pb-2">
+          {/* Settings and Help - shown on mobile only */}
+          <div className="px-4 pt-2 pb-2 lg:hidden">
             <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">Support</p>
           </div>
           
-          <nav className="mt-1 px-3 space-y-1">
-            {secondaryNavigation.map(item => renderNavLink(item, 'secondary'))}
-          </nav> */}
+          <div className="mt-2 px-3 space-y-1 lg:hidden">
+            <Link
+              href="/settings"
+              className="group flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-800 text-gray-400 group-hover:text-emerald-400">
+                <Settings className="h-5 w-5" />
+              </span>
+              <span className="ml-3 flex-1 font-medium">Settings</span>
+            </Link>
+            
+            <Link
+              href="/help"
+              className="group flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-800 text-gray-400 group-hover:text-emerald-400">
+                <HelpCircle className="h-5 w-5" />
+              </span>
+              <span className="ml-3 flex-1 font-medium">Help & Support</span>
+            </Link>
+          </div>
           
           {/* Footer with version */}
           <div className="mt-auto px-4 py-3 text-center">
             <div className="text-xs text-gray-500">v1.2.0</div>
           </div>
         </div>
-      </div>  
-    </div>
-  )
+      </>
+    )
+  }
 }

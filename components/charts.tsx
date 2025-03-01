@@ -86,6 +86,13 @@ export function BarChart({ data, loading = false }) {
     })
   }, [data])
 
+  // Determine if we're showing all leagues or a specific league
+  // This should be determined from data patterns or context
+  const isAllLeagues = data?.length > 0 && data[0]?.label?.includes("League")
+  
+  // Set step size based on whether we're viewing all leagues or a specific one
+  const stepSize = isAllLeagues ? 500 : 50
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -189,6 +196,8 @@ export function BarChart({ data, loading = false }) {
             size: 11
           },
           padding: 10,
+          // Set a specific step size based on the view type
+          stepSize: stepSize,
           callback: function(value) {
             return value + 't'
           }
