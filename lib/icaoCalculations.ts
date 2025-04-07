@@ -1,23 +1,6 @@
+// icaoCalculations.ts
 import { Airport } from "./types";
 
-/**
-* SportEmissions Calculator
-*
-* This calculator is specifically calibrated for professional sports team travel,
-* based on real benchmark data from top European football leagues.
-*
-* Key findings from benchmark analysis:
-* - Average emissions: 10.75 tons CO2 per match
-* - Average distance: 370 km per match
-* - Emissions/distance ratio: 0.0291 tons/km (much higher than commercial flights)
-*/
-
-// Core emissions factor calibrated from benchmark data
-// This is significantly higher than standard ICAO values, reflecting:
-// 1. Charter flights operate with lower efficiency than commercial flights
-// 2. Teams travel with substantial extra equipment
-// 3. Charter aircraft are often older and less fuel-efficient
-// 4. Special airport procedures for teams may add extra fuel burn
 const CALIBRATED_EMISSIONS_FACTOR = 0.0291; // tons CO2 per km (round trip)
 
 // Flight type thresholds
