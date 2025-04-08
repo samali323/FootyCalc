@@ -940,7 +940,7 @@ export default function Dashboard() {
               </TabsContent>
 
               <TabsContent value="data-management">
-                <DataManagement supabase={supabase} />
+                <DataManagement supabase={supabase} onAddSeason={handleAddSeason} />
               </TabsContent>
             </Tabs>
           </>
