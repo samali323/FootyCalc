@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   DownloadCloud, Upload, RefreshCw, CheckCircle, AlertTriangle,
   Database, Globe, FileText, Copy, Search, Filter, Play, Plane,
-  Calendar
+  Calendar,
+  PlusCircle
 } from "lucide-react";
 import {
   Dialog,
@@ -33,11 +34,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { CustomAutocomplete } from "@/components/ui/custom-autocomplete"
+import { format } from "date-fns";
+import { DatePicker } from "./ui/date-picker";
 
 // TheSportsDB API key - Free tier
 const SPORTSDB_API_KEY = "594392"; // Replace with your API key
 
-const DataManagement = ({ supabase }) => {
+const DataManagement = ({ supabase, onAddSeason }) => {
   const [selectedTeam, setSelectedTeam] = useState([]);
   // State for API key configuration
   const [apiKey, setApiKey] = useState(SPORTSDB_API_KEY);
@@ -82,6 +85,16 @@ const DataManagement = ({ supabase }) => {
   // Dialogs state
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: "", message: "", onConfirm: null });
   const [apiInfoDialog, setApiInfoDialog] = useState(false);
+
+  const [openDialog, setOpenDialog] = useState(false);
+  const [dialogAction, setDialogAction] = useState("add"); // 'add' or 'edit'
+  const [seasonForm, setSeasonForm] = useState({
+    season_id: "",
+    start_date: "",
+    end_date: "",
+  });
+  const [startYear, setStartYear] = useState(new Date().getFullYear());
+  const [endYear, setEndYear] = useState(new Date().getFullYear() + 1);
 
   // Airport lookup state
   const [airportLookupDialog, setAirportLookupDialog] = useState(false);
@@ -304,7 +317,7 @@ const DataManagement = ({ supabase }) => {
     }
   };
 
-  // Fetch seasons for a league
+  // Fetch seasons for a league (Set Default Seasons)
   const fetchSeasons = async (leagueId) => {
     try {
       if (!leagueId) {
@@ -357,6 +370,24 @@ const DataManagement = ({ supabase }) => {
       setLoadingMessage("");
     }
   };
+
+  // Fetch seasons data from supabase
+  const fetchLeagueSeasons = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('seasons')
+        .select('season_id, start_date, end_date');
+
+      if (error) throw error;
+      setSeasons(data || []);
+    } catch (error) {
+      console.error("Error fetching league seasons:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeagueSeasons();
+  }, []);
 
   // Get default seasons (fallback)
   const getDefaultSeasons = () => {
@@ -1519,6 +1550,62 @@ const DataManagement = ({ supabase }) => {
     }
   };
 
+  const openAddDialog = () => {
+    console.log(`Hello open openDialog === ${openDialog}`)
+    setDialogAction("add");
+    setStartYear(new Date().getFullYear());
+    setEndYear(new Date().getFullYear() + 1);
+    setSeasonForm({
+      season_id: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      start_date: format(new Date(new Date().getFullYear(), 6, 1), "yyyy-MM-dd"), // July 1st
+      end_date: format(new Date(new Date().getFullYear() + 1, 4, 31), "yyyy-MM-dd"), // May 31st
+    });
+    setOpenDialog(true);
+  };
+
+  const handleSubmit = () => {
+    if (dialogAction === "add") {
+      onAddSeason(seasonForm);
+      fetchLeagueSeasons()
+    }
+    setOpenDialog(false);
+    fetchLeagueSeasons()
+  };
+
+  const handleYearChange = (type, value) => {
+    const numValue = parseInt(value);
+    if (type === "start") {
+      setStartYear(numValue);
+      setEndYear(numValue + 1);
+      setSeasonForm({
+        ...seasonForm,
+        season_id: `${numValue}-${numValue + 1}`,
+      });
+    } else {
+      setEndYear(numValue);
+      setSeasonForm({
+        ...seasonForm,
+        season_id: `${startYear}-${numValue}`,
+      });
+    }
+  };
+
+  const handleDateChange = (type, date) => {
+    setSeasonForm({
+      ...seasonForm,
+      [type]: format(date, "yyyy-MM-dd"),
+    });
+  };
+
+  const yearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 10; i <= currentYear + 10; i++) {
+      years.push(i);
+    }
+    return years;
+  };
+
   // UI for rendering the different tabs
   const renderLeaguesTab = () => (
     <div className="space-y-4">
@@ -1553,7 +1640,7 @@ const DataManagement = ({ supabase }) => {
                         (l) => l.league_id.toString() === option?.value
                       );
                       setSelectedLeague(league);
-                      if (league) fetchSeasons(league.league_id);
+                      if (league) fetchLeagueSeasons(league.league_id);
                     }}
                     inputClassName="w-full bg-gray-800 border-gray-700 text-white"
                     dropdownClassName="bg-gray-800 border border-gray-700 text-white"
@@ -1720,7 +1807,7 @@ const DataManagement = ({ supabase }) => {
                   </div>
 
                   <Button
-                    onClick={() => fetchSeasons(selectedLeague.league_id)}
+                    onClick={() => fetchLeagueSeasons(selectedLeague.league_id)}
                     disabled={isLoading}
                     className="w-full"
                   >
@@ -1730,7 +1817,13 @@ const DataManagement = ({ supabase }) => {
 
                   {seasons.length > 0 && (
                     <div className="mt-4">
-                      <Label>Select a Season</Label>
+                      <div className="flex justify-between items-center mb-2">
+                        <Label>Select a Season</Label>
+                        <Button onClick={openAddDialog} size="sm">
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Add Season
+                        </Button>
+                      </div>
                       <Select
                         onValueChange={(value) => {
                           const season = seasons.find(s => s.season_id === value);
@@ -1898,8 +1991,86 @@ const DataManagement = ({ supabase }) => {
             </CardContent>
           </Card>
         )}
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+        <DialogContent className="bg-gray-900 border-gray-800 text-white">
+          <DialogHeader>
+            <DialogTitle>
+              {dialogAction === "add" ? "Add New Season" : "Edit Season"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 my-4">
+            <div className="space-y-2">
+              <Label htmlFor="season_years">Season Years</Label>
+              <div className="flex gap-2 items-center">
+                <select
+                  className="bg-gray-800 text-white p-2 rounded-md border border-gray-700"
+                  value={startYear}
+                  onChange={(e) => handleYearChange("start", e.target.value)}
+                >
+                  {yearOptions().map((year) => (
+                    <option key={`start-${year}`} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+                <span>-</span>
+                <select
+                  className="bg-gray-800 text-white p-2 rounded-md border border-gray-700"
+                  value={endYear}
+                  onChange={(e) => handleYearChange("end", e.target.value)}
+                >
+                  {yearOptions().map((year) => (
+                    <option key={`end-${year}`} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="text-sm text-gray-400">
+                Season ID: {seasonForm.season_id}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="start_date">Start Date</Label>
+              <div className="flex items-center">
+                <DatePicker
+                  id="start_date"
+                  date={seasonForm.start_date ? new Date(seasonForm.start_date) : new Date()}
+                  onSelect={(date) => handleDateChange("start_date", date)}
+                />
+                <Calendar className="h-4 w-4 ml-2 text-gray-400" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="end_date">End Date</Label>
+              <div className="flex items-center">
+                <DatePicker
+                  id="end_date"
+                  date={seasonForm.end_date ? new Date(seasonForm.end_date) : new Date()}
+                  onSelect={(date) => handleDateChange("end_date", date)}
+                />
+                <Calendar className="h-4 w-4 ml-2 text-gray-400" />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit}>
+              {dialogAction === "add" ? "Add Season" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
+
 
   const renderMatchesTab = () => (
     <div className="space-y-4">
