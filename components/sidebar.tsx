@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Home, Users, Calendar, BarChart, Leaf, ChevronRight, Menu, X, Settings, HelpCircle, TrendingUp, ShieldAlert } from "lucide-react"
+import { Home, Users, Calendar, BarChart, Leaf, ChevronRight, Menu, X, TrendingUp, ShieldAlert, Calculator } from "lucide-react"
 import { getCarbonOffsetStatus } from "@/lib/carbonOffset"
 import { useAuth } from "@/components/auth/auth-provider"
 
@@ -21,7 +21,7 @@ export function Sidebar() {
   const [isLoading, setIsLoading] = useState(true)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user } = useAuth()
-  
+
   useEffect(() => {
     const fetchOffsetData = async () => {
       try {
@@ -34,7 +34,7 @@ export function Sidebar() {
         setIsLoading(false)
       }
     }
-    
+
     fetchOffsetData()
   }, [])
 
@@ -46,8 +46,8 @@ export function Sidebar() {
   const renderNavLink = (item, section) => {
     const { name, href, icon: Icon } = item
     const isMatchesEmissionsTab = name === "Matches & Emissions"
-    const isActive = 
-      pathname === href || 
+    const isActive =
+      pathname === href ||
       (isMatchesEmissionsTab && pathname === "/emissions")
     const isHovered = hoveredItem === `${section}-${name}`
 
@@ -55,11 +55,10 @@ export function Sidebar() {
       <Link
         key={`${section}-${name}`}
         href={href}
-        className={`group relative flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
-          isActive
+        className={`group relative flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
             ? "bg-gradient-to-r from-emerald-600/30 to-gray-800 text-white"
             : "text-gray-300 hover:bg-gray-800 hover:text-white"
-        }`}
+          }`}
         onMouseEnter={() => setHoveredItem(`${section}-${name}`)}
         onMouseLeave={() => setHoveredItem(null)}
       >
@@ -68,11 +67,10 @@ export function Sidebar() {
         )}
 
         <span
-          className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-            isActive 
-              ? "bg-emerald-600 text-white" 
+          className={`flex h-8 w-8 items-center justify-center rounded-lg ${isActive
+              ? "bg-emerald-600 text-white"
               : "bg-gray-800 text-gray-400 group-hover:text-emerald-400"
-          }`}
+            }`}
         >
           <Icon className="h-5 w-5" />
         </span>
@@ -120,10 +118,9 @@ export function Sidebar() {
       </div>
 
       {/* Mobile sidebar - right side */}
-      <div 
-        className={`fixed inset-y-0 right-0 z-20 w-72 transform overflow-y-auto transition-transform duration-300 ease-in-out lg:hidden ${
-          isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+      <div
+        className={`fixed inset-y-0 right-0 z-20 w-72 transform overflow-y-auto transition-transform duration-300 ease-in-out lg:hidden ${isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         <div className="flex h-full flex-col overflow-hidden rounded-l-xl bg-gray-900 shadow-xl">
           {/* Sidebar content for mobile */}
@@ -159,48 +156,84 @@ export function Sidebar() {
 
           <nav className="mt-2 px-3 space-y-1">
             {navigation.map(item => renderNavLink(item, 'main'))}
-            
+
             {/* Admin Dashboard - Only visible when user is logged in */}
-           
-{user && (
-  <Link
-    href="/dashboard"
-    className={`group relative flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
-      pathname === "/dashboard"
-        ? "bg-gradient-to-r from-emerald-600/30 to-gray-800 text-white"
-        : "text-gray-300 hover:bg-gradient-to-r hover:from-emerald-800/20 hover:to-gray-800 hover:text-white"
-    }`}
-    onMouseEnter={() => setHoveredItem("main-admin")}
-    onMouseLeave={() => setHoveredItem(null)}
-  >
-    {pathname === "/dashboard" && (
-      <span className="absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-emerald-500" />
-    )}
+            {user && (
+              <Link
+                href="/dashboard"
+                className={`group relative flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${pathname === "/dashboard"
+                    ? "bg-gradient-to-r from-emerald-600/30 to-gray-800 text-white"
+                    : "text-gray-300 hover:bg-gradient-to-r hover:from-emerald-800/20 hover:to-gray-800 hover:text-white"
+                  }`}
+                onMouseEnter={() => setHoveredItem("main-admin")}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
+                {pathname === "/dashboard" && (
+                  <span className="absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-emerald-500" />
+                )}
 
-    <span
-      className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 ${
-        pathname === "/dashboard"
-          ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30" 
-          : "bg-gradient-to-br from-gray-700 to-gray-800 text-gray-300 group-hover:from-emerald-700 group-hover:to-emerald-900 group-hover:text-white"
-      }`}
-    >
-      <ShieldAlert className="h-5 w-5" />
-    </span>
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 ${pathname === "/dashboard"
+                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30"
+                      : "bg-gradient-to-br from-gray-700 to-gray-800 text-gray-300 group-hover:from-emerald-700 group-hover:to-emerald-900 group-hover:text-white"
+                    }`}
+                >
+                  <ShieldAlert className="h-5 w-5" />
+                </span>
 
-    <span className="ml-3 flex-1 font-medium">
-      <span className="flex items-center">
-        Admin Dashboard
-        <span className="ml-2 px-1.5 py-0.5 text-xs font-semibold bg-emerald-800/60 text-emerald-300 rounded-md">
-          Pro
-        </span>
-      </span>
-    </span>
+                <span className="ml-3 flex-1 font-medium">
+                  <span className="flex items-center">
+                    Admin Dashboard
+                    <span className="ml-2 px-1.5 py-0.5 text-xs font-semibold bg-emerald-800/60 text-emerald-300 rounded-md">
+                      Pro
+                    </span>
+                  </span>
+                </span>
 
-    {(pathname === "/dashboard" || hoveredItem === "main-admin") && (
-      <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 ${pathname === "/dashboard" ? "text-emerald-400" : "text-gray-400"}`} />
-    )}
-  </Link>
-)}
+                {(pathname === "/dashboard" || hoveredItem === "main-admin") && (
+                  <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 ${pathname === "/dashboard" ? "text-emerald-400" : "text-gray-400"}`} />
+                )}
+              </Link>
+            )}
+
+            {/* Process Calculation - Only visible when user is logged in */}
+            {user && (
+              <Link
+                href="/process-calculation"
+                className={`group relative flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${pathname === "/process-calculation"
+                    ? "bg-gradient-to-r from-emerald-600/30 to-gray-800 text-white"
+                    : "text-gray-300 hover:bg-gradient-to-r hover:from-emerald-800/20 hover:to-gray-800 hover:text-white"
+                  }`}
+                onMouseEnter={() => setHoveredItem("main-process")}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
+                {pathname === "/process-calculation" && (
+                  <span className="absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-emerald-500" />
+                )}
+
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 ${pathname === "/process-calculation"
+                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30"
+                      : "bg-gradient-to-br from-gray-700 to-gray-800 text-gray-300 group-hover:from-emerald-700 group-hover:to-emerald-900 group-hover:text-white"
+                    }`}
+                >
+                  <Calculator className="h-5 w-5" />
+                </span>
+
+                <span className="ml-3 flex-1 font-medium">
+                  <span className="flex items-center">
+                    Process Calculation
+                    <span className="ml-2 px-1.5 py-0.5 text-xs font-semibold bg-emerald-800/60 text-emerald-300 rounded-md">
+                      Pro
+                    </span>
+                  </span>
+                </span>
+
+                {(pathname === "/process-calculation" || hoveredItem === "main-process") && (
+                  <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 ${pathname === "/process-calculation" ? "text-emerald-400" : "text-gray-400"}`} />
+                )}
+              </Link>
+            )}
           </nav>
 
           {/* Carbon Offset Insights */}
@@ -250,7 +283,7 @@ export function Sidebar() {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-auto px-4 py-3 text-center">
             <div className="text-xs text-gray-500">v1.2.0</div>
           </div>
