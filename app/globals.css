@@ -70,10 +70,12 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
+
 /* Sports Emissions - Premium Branded Scrollbar */
 ::-webkit-scrollbar {
   width: 16px;
@@ -81,14 +83,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a; /* Dark blue-black background */
+  background: #0f172a;
+  /* Dark blue-black background */
   border-radius: 0;
   box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.8);
-  background-image: 
-    linear-gradient(90deg, 
-      rgba(16, 185, 129, 0.05) 1px, 
-      transparent 1px
-    );
+  background-image:
+    linear-gradient(90deg,
+      rgba(16, 185, 129, 0.05) 1px,
+      transparent 1px);
   background-size: 4px 100%;
 }
 
@@ -119,9 +121,17 @@
 
 /* Animated hover effect */
 @keyframes pulse-glow {
-  0% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.5); }
-  50% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.8); }
-  100% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.5); }
+  0% {
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+  }
+
+  100% {
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+  }
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -144,4 +154,20 @@ html, body {
 .scrollable-content {
   scrollbar-width: thin;
   scrollbar-color: #10b981 #0f172a;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease-out forwards;
 }

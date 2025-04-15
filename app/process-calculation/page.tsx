@@ -1,27 +1,40 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { 
-  Calculator, 
-  Clipboard, 
-  ChevronDown, 
-  ChevronUp, 
-  AlertCircle, 
-  Info, 
-  Leaf, 
-  PlaneTakeoff, 
-  PlaneLanding, 
-  Users, 
-  Plane, 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Calculator,
+  Clipboard,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  Info,
+  Leaf,
+  PlaneTakeoff,
+  PlaneLanding,
+  Users,
+  Plane,
   RotateCw,
   X,
   Check,
   RefreshCw,
   FileText,
-  Download
+  Download,
+  Trophy,
+  CalendarDays,
+  Medal
 } from 'lucide-react';
 import { supabase } from "@/lib/supabase/client";
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { League, Match, Season } from '@/lib/types';
+import { toast } from 'sonner';
 
 const EmissionsCalculationProcess = () => {
+  const [leagues, setLeagues] = useState<League[]>([])
+  const [seasons, setSeasons] = useState<Season[]>([])
+  const [matches, setMatches] = useState<Match[]>([])
+  const [matchCount, setMatchCount] = useState(10)
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+
   // States for form inputs (similar to the main calculator)
   const [homeAirport, setHomeAirport] = useState(null);
   const [awayAirport, setAwayAirport] = useState(null);
@@ -33,7 +46,13 @@ const EmissionsCalculationProcess = () => {
   const [isLoadingAirports, setIsLoadingAirports] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
-  
+
+  // States for tab management and selections
+  const [activeTab, setActiveTab] = useState("airports"); // Default to airports tab
+  const [selectedLeague, setSelectedLeague] = useState("all"); // Default to "All"
+  const [selectedSeason, setSelectedSeason] = useState(""); // Default season must be unset
+  const [selectedMatch, setSelectedMatch] = useState(""); // No match selected by default
+
   // States for calculation process display
   const [calculationSteps, setCalculationSteps] = useState([]);
   const [expandedSections, setExpandedSections] = useState({});
@@ -43,7 +62,11 @@ const EmissionsCalculationProcess = () => {
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [debugLogs, setDebugLogs] = useState([]);
   const [calculationHistory, setCalculationHistory] = useState([]);
-  
+  const [toast, setToast] = useState({
+    show: false,
+    message: '',
+    type: 'success' // 'success' or 'error'
+  });
   // Aircraft cruising speeds in km/h (from your original code)
   const aircraftCruisingSpeeds = {
     "Boeing 737-8K5(WL)": 840,
@@ -71,7 +94,7 @@ const EmissionsCalculationProcess = () => {
     "Beechcraft King Air 350i": 11,
     "Bombardier Global 6000": 13
   };
-  
+
   // Calculate methodologies available
   const methodologies = [
     {
@@ -95,7 +118,7 @@ const EmissionsCalculationProcess = () => {
       description: "Greenhouse Gas Protocol methodology"
     }
   ];
-  
+
   // Fetch airports and aircraft data from Supabase (same as original code)
   useEffect(() => {
     const fetchAirports = async () => {
@@ -105,19 +128,19 @@ const EmissionsCalculationProcess = () => {
           .from("airports")
           .select("iata_code, airport_name, latitude, longitude")
           .order('airport_name', { ascending: true })
-          
+
         const uniqueAirports = Object.values(
           data.reduce((acc, airport) => {
             acc[airport.iata_code] = airport;
             return acc;
           }, {})
         );
-          
+
         if (error) {
           console.error("Error fetching airports:", error);
           return;
         }
-        
+
         // Transform the data to match our expected format
         const formattedAirports = uniqueAirports.map(airport => ({
           id: airport.iata_code,
@@ -125,7 +148,7 @@ const EmissionsCalculationProcess = () => {
           latitude: airport.latitude,
           longitude: airport.longitude
         }));
-        
+
         setAirports(formattedAirports);
       } catch (error) {
         console.error("Failed to fetch airports:", error);
@@ -138,56 +161,56 @@ const EmissionsCalculationProcess = () => {
     const fetchAircraftData = () => {
       const aircraftData = {
         // 2Excel Aviation
-        "G-NEWG": {"model": "Boeing 737-8K5(WL)", "fuel_burn_rate_kg_per_hour": 2400, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-      
+        "G-NEWG": { "model": "Boeing 737-8K5(WL)", "fuel_burn_rate_kg_per_hour": 2400, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+
         // Eastern Airways
-        "G-SWRD": {"model": "Embraer ERJ-190LR", "fuel_burn_rate_kg_per_hour": 1800, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-CMLI": {"model": "ATR 72-600", "fuel_burn_rate_kg_per_hour": 600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-CMFI": {"model": "ATR 72-600", "fuel_burn_rate_kg_per_hour": 600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-IACY": {"model": "Saab 2000", "fuel_burn_rate_kg_per_hour": 800, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-CMEI": {"model": "ATR 72-600", "fuel_burn_rate_kg_per_hour": 600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-CLSN": {"model": "ATR 72-600", "fuel_burn_rate_kg_per_hour": 600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-MAJY": {"model": "Embraer ERJ-190LR", "fuel_burn_rate_kg_per_hour": 1800, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-MAJZ": {"model": "Embraer ERJ-190LR", "fuel_burn_rate_kg_per_hour": 1800, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-      
+        "G-SWRD": { "model": "Embraer ERJ-190LR", "fuel_burn_rate_kg_per_hour": 1800, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-CMLI": { "model": "ATR 72-600", "fuel_burn_rate_kg_per_hour": 600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-CMFI": { "model": "ATR 72-600", "fuel_burn_rate_kg_per_hour": 600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-IACY": { "model": "Saab 2000", "fuel_burn_rate_kg_per_hour": 800, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-CMEI": { "model": "ATR 72-600", "fuel_burn_rate_kg_per_hour": 600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-CLSN": { "model": "ATR 72-600", "fuel_burn_rate_kg_per_hour": 600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-MAJY": { "model": "Embraer ERJ-190LR", "fuel_burn_rate_kg_per_hour": 1800, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-MAJZ": { "model": "Embraer ERJ-190LR", "fuel_burn_rate_kg_per_hour": 1800, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+
         // Loganair
-        "G-SAJC": {"model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-SAJG": {"model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-SAJH": {"model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-SAJK": {"model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-SAJN": {"model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-LMTI": {"model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-SAJO": {"model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-      
+        "G-SAJC": { "model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-SAJG": { "model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-SAJH": { "model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-SAJK": { "model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-SAJN": { "model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-LMTI": { "model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-SAJO": { "model": "Embraer ERJ-145EP", "fuel_burn_rate_kg_per_hour": 1000, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+
         // Titan Airways
-        "G-POWK": {"model": "Airbus A321-211", "fuel_burn_rate_kg_per_hour": 2600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-POWT": {"model": "Airbus A321-211", "fuel_burn_rate_kg_per_hour": 2600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-      
+        "G-POWK": { "model": "Airbus A321-211", "fuel_burn_rate_kg_per_hour": 2600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-POWT": { "model": "Airbus A321-211", "fuel_burn_rate_kg_per_hour": 2600, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+
         // Blue Islands
-        "G-ISLO": {"model": "Dornier 328Jet", "fuel_burn_rate_kg_per_hour": 700, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-ISLK": {"model": "Dornier 328Jet", "fuel_burn_rate_kg_per_hour": 700, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-ISLM": {"model": "Dornier 328Jet", "fuel_burn_rate_kg_per_hour": 700, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-      
+        "G-ISLO": { "model": "Dornier 328Jet", "fuel_burn_rate_kg_per_hour": 700, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-ISLK": { "model": "Dornier 328Jet", "fuel_burn_rate_kg_per_hour": 700, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-ISLM": { "model": "Dornier 328Jet", "fuel_burn_rate_kg_per_hour": 700, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+
         // Jet2
-        "G-GDFJ": {"model": "Boeing 737-33A", "fuel_burn_rate_kg_per_hour": 2200, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-GDFL": {"model": "Boeing 737-33A", "fuel_burn_rate_kg_per_hour": 2200, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-JZHX": {"model": "Boeing 737-8K5", "fuel_burn_rate_kg_per_hour": 2400, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "G-GDFF": {"model": "Boeing 737-33A", "fuel_burn_rate_kg_per_hour": 2200, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-      
+        "G-GDFJ": { "model": "Boeing 737-33A", "fuel_burn_rate_kg_per_hour": 2200, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-GDFL": { "model": "Boeing 737-33A", "fuel_burn_rate_kg_per_hour": 2200, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-JZHX": { "model": "Boeing 737-8K5", "fuel_burn_rate_kg_per_hour": 2400, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "G-GDFF": { "model": "Boeing 737-33A", "fuel_burn_rate_kg_per_hour": 2200, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+
         // Thalair
-        "F-HFCN": {"model": "Beechcraft King Air 350i", "fuel_burn_rate_kg_per_hour": 400, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-        "F-HFKF": {"model": "Beechcraft King Air 350i", "fuel_burn_rate_kg_per_hour": 400, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
-      
+        "F-HFCN": { "model": "Beechcraft King Air 350i", "fuel_burn_rate_kg_per_hour": 400, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+        "F-HFKF": { "model": "Beechcraft King Air 350i", "fuel_burn_rate_kg_per_hour": 400, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
+
         // Comlux
-        "9H-MAC": {"model": "Bombardier Global 6000", "fuel_burn_rate_kg_per_hour": 1800, "emissions_factor_kg_CO2_per_kg_fuel": 3.16},
+        "9H-MAC": { "model": "Bombardier Global 6000", "fuel_burn_rate_kg_per_hour": 1800, "emissions_factor_kg_CO2_per_kg_fuel": 3.16 },
       };
-      
+
       setAircraftDatabase(aircraftData);
     };
 
     fetchAirports();
     fetchAircraftData();
-    
+
     // Load sample calculation history
     // const sampleHistory = [
     //   {
@@ -215,7 +238,7 @@ const EmissionsCalculationProcess = () => {
     //     methodology: "DEFRA"
     //   }
     // ];
-    
+
     // setCalculationHistory(sampleHistory);
   }, []);
 
@@ -226,59 +249,59 @@ const EmissionsCalculationProcess = () => {
       [sectionId]: !prev[sectionId]
     }));
   };
-  
+
   // Add a debug log
   const addDebugLog = (message, type = "info") => {
     const timestamp = new Date().toISOString().split('T')[1].substring(0, 8);
     setDebugLogs(prev => [
-      ...prev, 
-      { 
-        timestamp, 
-        message: typeof message === 'object' ? JSON.stringify(message) : message, 
-        type 
+      ...prev,
+      {
+        timestamp,
+        message: typeof message === 'object' ? JSON.stringify(message) : message,
+        type
       }
     ]);
   };
-  
+
   // Clear debug logs
   const clearDebugLogs = () => {
     setDebugLogs([]);
   };
-  
+
   // Handle calculation
   const handleCalculate = () => {
     // Reset validation states
     setValidationErrors({});
     setCalculationSteps([]);
     clearDebugLogs();
-    
+
     // Validate inputs
     const errors = {};
-   
+
     if (!homeAirport) {
       errors.homeAirport = 'Please select a home airport';
     }
-    
+
     if (!awayAirport) {
       errors.awayAirport = 'Please select an away airport';
     }
-    
+
     if (homeAirport && awayAirport && homeAirport.id === awayAirport.id) {
       errors.sameAirport = 'Home and away airports cannot be the same';
     }
-    
+
     if (passengers < 1) {
       errors.passengers = 'At least one passenger is required';
     }
-    
+
     // If there are validation errors, display them and return
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       return;
     }
-  
+
     setIsCalculating(true);
-    
+
     // Simulate API calculation delay
     setTimeout(() => {
       try {
@@ -287,11 +310,11 @@ const EmissionsCalculationProcess = () => {
           homeAirport.latitude, homeAirport.longitude,
           awayAirport.latitude, awayAirport.longitude
         );
-        
+
         addDebugLog(`Calculated raw distance: ${distance.toFixed(2)} km`);
-        
+
         const steps = [];
-        
+
         // Step 1: Add distance calculation
         steps.push({
           id: "distance",
@@ -305,12 +328,12 @@ const EmissionsCalculationProcess = () => {
             </ul>
           `
         });
-        
+
         // Step 2: Determine flight type
         const flightType = determineFlightType(distance);
-        
+
         addDebugLog(`Determined flight type: ${flightType}`);
-        
+
         steps.push({
           id: "flightType",
           title: "Step 2: Flight Type Determination",
@@ -329,12 +352,12 @@ const EmissionsCalculationProcess = () => {
             </ul>
           `
         });
-        
+
         // Step 3: Apply route correction
         const adjustedDistance = applyRouteCorrection(distance, flightType);
-        
+
         addDebugLog(`Applied route correction. Adjusted distance: ${adjustedDistance.toFixed(2)} km`);
-        
+
         steps.push({
           id: "routeCorrection",
           title: "Step 3: Route Correction",
@@ -350,13 +373,13 @@ const EmissionsCalculationProcess = () => {
             <p class="text-xs text-gray-400 mt-2">Note: Route correction accounts for the fact that aircraft don't fly in perfectly straight lines between airports due to air traffic control, weather patterns, and navigational waypoints.</p>
           `
         });
-        
+
         // Calculate emissions based on selected methodology
         let result;
-        
+
         if (aircraftRegistration && aircraft_database[aircraftRegistration]) {
           const aircraft = aircraft_database[aircraftRegistration];
-          
+
           // Step 4: Aircraft details
           steps.push({
             id: "aircraftDetails",
@@ -372,12 +395,12 @@ const EmissionsCalculationProcess = () => {
               </ul>
             `
           });
-          
+
           // Step 5: Calculate fuel consumption
           const totalFuelKg = calculateFuelBurn(aircraft, adjustedDistance, flightType);
-          
+
           addDebugLog(`Calculated fuel consumption: ${totalFuelKg.toFixed(2)} kg`);
-          
+
           steps.push({
             id: "fuelConsumption",
             title: "Step 5: Fuel Consumption Calculation",
@@ -394,13 +417,13 @@ const EmissionsCalculationProcess = () => {
               </ul>
             `
           });
-          
+
           // Step 6: Convert fuel to CO2
           const co2Factor = getCO2EmissionFactor();
           const rawEmissions = totalFuelKg * co2Factor / 1000; // tonnes
-          
+
           addDebugLog(`Converted fuel to CO2: ${rawEmissions.toFixed(3)} tonnes`);
-          
+
           steps.push({
             id: "fuelToCO2",
             title: "Step 6: Fuel to CO₂ Conversion",
@@ -415,14 +438,14 @@ const EmissionsCalculationProcess = () => {
               <p class="text-xs text-gray-400 mt-2">Note: The standard ICAO CO₂ emission factor of 3.16 kg CO₂ per kg of jet fuel is used.</p>
             `
           });
-          
+
           // Step 7: Load factor adjustment
           const capacity = aircraftCapacity[aircraft.model] || 150;
           const loadFactor = Math.min(passengers / capacity, 1);
           const loadFactorAdjustment = calculateLoadFactorAdjustment(passengers, aircraft.model);
-          
+
           addDebugLog(`Applied load factor adjustment: ${loadFactorAdjustment.toFixed(3)}`);
-          
+
           steps.push({
             id: "loadFactor",
             title: "Step 7: Load Factor Adjustment",
@@ -439,14 +462,14 @@ const EmissionsCalculationProcess = () => {
               <p class="text-xs text-gray-400 mt-2">Note: ICAO methodology suggests that about 80% of emissions are fixed regardless of passenger count, with 20% varying based on load.</p>
             `
           });
-          
+
           // Step 8: Apply radiative forcing index (RFI)
           const baseEmissionsPerKm = rawEmissions / adjustedDistance;
           const emissionsPerKm = baseEmissionsPerKm * loadFactorAdjustment;
           const rfi = calculateRFI(flightType);
-          
+
           addDebugLog(`Applied RFI: ${rfi}`);
-          
+
           steps.push({
             id: "rfi",
             title: "Step 8: Radiative Forcing Index",
@@ -462,19 +485,19 @@ const EmissionsCalculationProcess = () => {
               <p class="text-xs text-gray-400 mt-2">Note: The Radiative Forcing Index accounts for additional warming effects from aviation emissions at altitude, including nitrogen oxides, water vapor, and contrails.</p>
             `
           });
-          
+
           // Step 9: Round trip calculation
           let totalEmissions = emissionsPerKm * adjustedDistance * rfi;
           const oneWayEmissions = totalEmissions;
           const finalDistance = isRoundTrip ? distance * 2 : distance;
           const finalAdjustedDistance = isRoundTrip ? adjustedDistance * 2 : adjustedDistance;
-          
+
           if (isRoundTrip) {
             totalEmissions *= 2;
           }
-          
+
           addDebugLog(`Calculated ${isRoundTrip ? 'round-trip' : 'one-way'} emissions: ${totalEmissions.toFixed(3)} tonnes`);
-          
+
           steps.push({
             id: "roundTrip",
             title: "Step 9: Trip Type Calculation",
@@ -490,10 +513,10 @@ const EmissionsCalculationProcess = () => {
               </ul>
             `
           });
-          
+
           // Step 10: Per passenger calculation
           const emissionsPerPassenger = totalEmissions / passengers;
-          
+
           steps.push({
             id: "perPassenger",
             title: "Step 10: Per Passenger Emissions",
@@ -506,14 +529,14 @@ const EmissionsCalculationProcess = () => {
               </ul>
             `
           });
-          
+
           // Add methodology notes based on selected methodology
           steps.push({
             id: "methodology",
             title: "Methodology Notes",
             content: getMethodologyDetails(selectedMethodology)
           });
-          
+
           // Calculate emissions equivalences
           const equivalencies = {
             carsPerYear: Math.round(totalEmissions * 4.6),
@@ -523,7 +546,7 @@ const EmissionsCalculationProcess = () => {
             recycledWasteInKg: Math.round(totalEmissions * 1200),
             offsetCostUSD: Math.round(totalEmissions * 13.5)
           };
-          
+
           steps.push({
             id: "equivalencies",
             title: "Emissions Equivalencies",
@@ -539,7 +562,7 @@ const EmissionsCalculationProcess = () => {
               </ul>
             `
           });
-          
+
           // Final result
           result = {
             totalEmissions,
@@ -569,7 +592,7 @@ const EmissionsCalculationProcess = () => {
         } else {
           // No aircraft selected, use default calculation method
           addDebugLog("No specific aircraft selected, using default ICAO methodology");
-          
+
           // Step 4: Default calculation method
           steps.push({
             id: "defaultMethod",
@@ -583,13 +606,13 @@ const EmissionsCalculationProcess = () => {
               </ul>
             `
           });
-          
+
           // Step 5: Emissions adjustment based on flight type
           const CALIBRATED_EMISSIONS_FACTOR = getCalibrationFactor(selectedMethodology);
           const emissionsAdjustment = getEmissionsAdjustment(flightType);
-          
+
           addDebugLog(`Applied emissions adjustment for ${flightType}: ${emissionsAdjustment}`);
-          
+
           steps.push({
             id: "emissionsAdjustment",
             title: "Step 5: Distance-Based Emissions Adjustment",
@@ -604,14 +627,14 @@ const EmissionsCalculationProcess = () => {
               <p class="text-xs text-gray-400 mt-2">Note: Short flights have higher emissions per km due to the disproportionate fuel consumption during takeoff and landing. Long flights are more fuel-efficient per km once at cruising altitude.</p>
             `
           });
-          
+
           // Step 6: Load factor calculation
           const defaultCapacity = getDefaultCapacity(flightType);
           const loadFactor = Math.min(passengers / defaultCapacity, 1);
           const loadFactorAdjustment = calculateDefaultLoadFactorAdjustment(loadFactor);
-          
+
           addDebugLog(`Applied load factor adjustment: ${loadFactorAdjustment.toFixed(3)}`);
-          
+
           steps.push({
             id: "loadFactor",
             title: "Step 6: Load Factor Adjustment",
@@ -628,19 +651,19 @@ const EmissionsCalculationProcess = () => {
               <p class="text-xs text-gray-400 mt-2">Note: Standard methodology suggests that about 80% of emissions are fixed regardless of passenger count, with 20% varying based on load.</p>
             `
           });
-          
+
           // Step 7: Calculate base emissions
           const baseEmissionsPerKm = CALIBRATED_EMISSIONS_FACTOR * emissionsAdjustment;
           const emissionsPerKm = baseEmissionsPerKm * loadFactorAdjustment;
-          
+
           addDebugLog(`Calculated emissions rate: ${(emissionsPerKm * 1000).toFixed(2)} kg CO₂/km`);
-          
+
           // Step 8: Apply radiative forcing index (RFI)
           const rfi = calculateRFI(flightType);
           let totalEmissions = adjustedDistance * emissionsPerKm * rfi;
-          
+
           addDebugLog(`Applied RFI factor: ${rfi}`);
-          
+
           steps.push({
             id: "rfi",
             title: "Step 7: Radiative Forcing Index",
@@ -658,18 +681,18 @@ const EmissionsCalculationProcess = () => {
               <p class="text-xs text-gray-400 mt-2">Note: The Radiative Forcing Index accounts for additional warming effects from aviation emissions at altitude, including nitrogen oxides, water vapor, and contrails.</p>
             `
           });
-          
+
           // Step 9: Round trip calculation
           const oneWayEmissions = totalEmissions;
           const finalDistance = isRoundTrip ? distance * 2 : distance;
           const finalAdjustedDistance = isRoundTrip ? adjustedDistance * 2 : adjustedDistance;
-          
+
           if (isRoundTrip) {
             totalEmissions *= 2;
           }
-          
+
           addDebugLog(`Calculated ${isRoundTrip ? 'round-trip' : 'one-way'} emissions: ${totalEmissions.toFixed(3)} tonnes`);
-          
+
           steps.push({
             id: "roundTrip",
             title: "Step 8: Trip Type Calculation",
@@ -685,10 +708,10 @@ const EmissionsCalculationProcess = () => {
               </ul>
             `
           });
-          
+
           // Step 10: Per passenger calculation
           const emissionsPerPassenger = totalEmissions / passengers;
-          
+
           steps.push({
             id: "perPassenger",
             title: "Step 9: Per Passenger Emissions",
@@ -701,14 +724,14 @@ const EmissionsCalculationProcess = () => {
               </ul>
             `
           });
-          
+
           // Add methodology notes based on selected methodology
           steps.push({
             id: "methodology",
             title: "Methodology Notes",
             content: getMethodologyDetails(selectedMethodology)
           });
-          
+
           // Calculate emissions equivalences
           const equivalencies = {
             carsPerYear: Math.round(totalEmissions * 4.6),
@@ -718,7 +741,7 @@ const EmissionsCalculationProcess = () => {
             recycledWasteInKg: Math.round(totalEmissions * 1200),
             offsetCostUSD: Math.round(totalEmissions * 13.5)
           };
-          
+
           steps.push({
             id: "equivalencies",
             title: "Emissions Equivalencies",
@@ -734,7 +757,7 @@ const EmissionsCalculationProcess = () => {
               </ul>
             `
           });
-          
+
           result = {
             totalEmissions,
             emissionsPerPassenger,
@@ -757,7 +780,7 @@ const EmissionsCalculationProcess = () => {
             methodology: selectedMethodology
           };
         }
-        
+
         setCalculationSteps(steps);
         setCalculationResult(result);
         setExpandedSections({
@@ -765,10 +788,10 @@ const EmissionsCalculationProcess = () => {
           flightType: false,
           routeCorrection: false
         });
-        
+
         // Calculate results with alternative methodologies
         calculateAlternativeMethodologies(distance, adjustedDistance, passengers, isRoundTrip, flightType);
-        
+
         // Add to calculation history
         const historyEntry = {
           id: `calc-${new Date().getTime().toString().slice(-6)}`,
@@ -778,9 +801,9 @@ const EmissionsCalculationProcess = () => {
           totalEmissions: result.totalEmissions.toFixed(2),
           methodology: selectedMethodology
         };
-        
+
         setCalculationHistory(prev => [historyEntry, ...prev].slice(0, 10));
-        
+
         setIsCalculating(false);
       } catch (error) {
         console.error("Calculation error:", error);
@@ -789,11 +812,11 @@ const EmissionsCalculationProcess = () => {
       }
     }, 800);
   };
-  
+
   // Calculate emissions using alternative methodologies for comparison
   const calculateAlternativeMethodologies = (distance, adjustedDistance, passengers, isRoundTrip, flightType, currentResult) => {
     const methodologiesToCompare = methodologies.filter(m => m.id !== selectedMethodology);
-    
+
     const alternativeResults = methodologiesToCompare.map(methodology => {
       const factor = getCalibrationFactor(methodology.id);
       const emissionsAdjustment = getEmissionsAdjustment(flightType);
@@ -803,15 +826,15 @@ const EmissionsCalculationProcess = () => {
       const baseEmissionsPerKm = factor * emissionsAdjustment;
       const emissionsPerKm = baseEmissionsPerKm * loadFactorAdjustment;
       const rfi = calculateRFI(flightType);
-      
+
       let totalEmissions = adjustedDistance * emissionsPerKm * rfi;
       if (isRoundTrip) {
         totalEmissions *= 2;
       }
-      
-      const percentDifference = currentResult ? 
+
+      const percentDifference = currentResult ?
         ((totalEmissions / currentResult.totalEmissions - 1) * 100).toFixed(1) : 0;
-      
+
       return {
         id: methodology.id,
         name: methodology.name,
@@ -820,10 +843,10 @@ const EmissionsCalculationProcess = () => {
         percentDifference: percentDifference
       };
     });
-    
+
     setAlternativeCalculations(alternativeResults);
   };
-  
+
   // Utility functions
   function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; // Earth's radius in kilometers
@@ -842,7 +865,7 @@ const EmissionsCalculationProcess = () => {
       short: 800,     // Below this is a short flight
       medium: 4800    // Below this is a medium flight, above is long-haul
     };
-    
+
     if (distanceKm < FLIGHT_DISTANCE_THRESHOLDS.derby) {
       return "derby";
     } else if (distanceKm < FLIGHT_DISTANCE_THRESHOLDS.short) {
@@ -853,7 +876,7 @@ const EmissionsCalculationProcess = () => {
       return "long";
     }
   }
-  
+
   function getRouteInefficiencyFactor(flightType) {
     const ROUTE_INEFFICIENCY = {
       derby: 1.0,     // No correction for ground transport
@@ -861,7 +884,7 @@ const EmissionsCalculationProcess = () => {
       medium: 1.08,   // 8% extra for medium flights
       long: 1.05      // 5% extra for long flights
     };
-    
+
     return ROUTE_INEFFICIENCY[flightType];
   }
 
@@ -869,9 +892,9 @@ const EmissionsCalculationProcess = () => {
     const inefficiencyFactor = getRouteInefficiencyFactor(flightType);
     return distance * inefficiencyFactor;
   }
-  
+
   function convertFlightTypeFormat(flightType) {
-    switch(flightType) {
+    switch (flightType) {
       case "derby": return "Derby Match";
       case "short": return "Short Flight";
       case "medium": return "Medium Flight";
@@ -879,9 +902,9 @@ const EmissionsCalculationProcess = () => {
       default: return flightType;
     }
   }
-  
+
   function getDefaultCapacity(flightType) {
-    switch(flightType) {
+    switch (flightType) {
       case "derby": return 60;     // Coach/bus capacity
       case "short": return 100;    // Regional jet/smaller aircraft
       case "medium": return 180;   // Typical narrowbody capacity
@@ -889,15 +912,15 @@ const EmissionsCalculationProcess = () => {
       default: return 150;         // Default capacity
     }
   }
-  
+
   function calculateDefaultLoadFactorAdjustment(loadFactor) {
     // Similar to the aircraft-specific method but using standard values
     const fixedEmissionsRatio = 0.80; // 80% fixed emissions
     const variableEmissionsRatio = 0.20; // 20% variable based on load
-    
+
     return fixedEmissionsRatio + (variableEmissionsRatio * loadFactor);
   }
-  
+
   function getEmissionsAdjustment(flightType) {
     const DISTANCE_EMISSIONS_ADJUSTMENT = {
       derby: 0.5,     // Ground transport is more efficient
@@ -905,10 +928,10 @@ const EmissionsCalculationProcess = () => {
       medium: 1.0,    // Medium flights are our baseline
       long: 0.9       // Long flights have lower per-km emissions
     };
-    
+
     return DISTANCE_EMISSIONS_ADJUSTMENT[flightType];
   }
-  
+
   function getCalibrationFactor(methodology) {
     // Different methodologies have slightly different emissions factors
     const METHODOLOGY_FACTORS = {
@@ -917,10 +940,10 @@ const EmissionsCalculationProcess = () => {
       "EPA": 0.0285,
       "GHG": 0.0294
     };
-    
+
     return METHODOLOGY_FACTORS[methodology] || 0.0291;
   }
-  
+
   function calculateRFI(flightType) {
     switch (flightType) {
       case "derby": return 1.0;  // Ground transport has no altitude effects
@@ -930,19 +953,19 @@ const EmissionsCalculationProcess = () => {
       default: return 1.9;
     }
   }
-  
+
   function calculateLoadFactorAdjustment(passengers, aircraftModel) {
     const capacity = aircraftCapacity[aircraftModel] || 150;
     const loadFactor = Math.min(passengers / capacity, 1); // Cap at 100%
-    
+
     // ICAO methodology suggests that about 80% of emissions are fixed
     // regardless of passenger count
     const fixedEmissionsRatio = 0.80; // 80% fixed emissions
     const variableEmissionsRatio = 0.20; // 20% variable based on load
-    
+
     return fixedEmissionsRatio + (variableEmissionsRatio * loadFactor);
   }
-  
+
   function getLTOFuel(aircraftModel) {
     // LTO fuel consumption (kg) - varies by aircraft size
     if (aircraftModel.includes("737") || aircraftModel.includes("321")) {
@@ -959,39 +982,39 @@ const EmissionsCalculationProcess = () => {
       return 600; // Default
     }
   }
-  
+
   function calculateFuelBurn(aircraft, adjustedDistance, flightType) {
     let fuelBurnRateAdjusted = aircraft.fuel_burn_rate_kg_per_hour;
     const cruisingSpeed = aircraftCruisingSpeeds[aircraft.model] || 800;
-    
+
     // LTO fuel consumption
     const ltoFuel = getLTOFuel(aircraft.model);
-    
+
     // Calculate cruise time excluding LTO phases
     const climbDescentDistance = 200; // km - simplification of climb/descent phases
     const cruiseDistance = Math.max(0, adjustedDistance - climbDescentDistance);
-    
+
     // Calculate cruise time in hours
     const cruiseTimeHours = cruiseDistance / cruisingSpeed;
-    
+
     // Apply cruise-specific fuel burn rate (more efficient than average)
     const cruiseFuelRate = fuelBurnRateAdjusted * 0.9; // Cruise is ~10% more efficient than average
     const cruiseFuel = cruiseFuelRate * cruiseTimeHours;
-    
+
     // Calculate climb/descent fuel (typically higher consumption than cruise)
     const climbDescentFuel = (fuelBurnRateAdjusted * 1.2) * (climbDescentDistance / cruisingSpeed);
-    
+
     // Total fuel = LTO + climb/descent + cruise
     const totalFuelKg = ltoFuel + climbDescentFuel + cruiseFuel;
-    
+
     return totalFuelKg;
   }
-  
+
   function getCO2EmissionFactor() {
     // ICAO standard: 3.16 kg CO2 per kg of jet fuel
     return 3.16;
   }
-  
+
   function getMethodologyDetails(methodology) {
     const details = {
       "ICAO": `
@@ -1039,14 +1062,14 @@ const EmissionsCalculationProcess = () => {
         <p class="text-xs text-gray-400 mt-2">Reference: GHG Protocol Corporate Accounting and Reporting Standard</p>
       `
     };
-    
+
     return details[methodology] || details["ICAO"];
   }
-  
+
   // Function to download calculation details as CSV
   const downloadCalculationCSV = () => {
     if (!calculationResult) return;
-    
+
     const rows = [
       ['Aviation Emissions Calculation Report'],
       ['Generated:', new Date().toISOString()],
@@ -1078,7 +1101,7 @@ const EmissionsCalculationProcess = () => {
       ['Smartphones Charged:', calculationResult.equivalencies.smartphonesCharged],
       ['Trees Growing for One Year:', calculationResult.equivalencies.treesNeededForYear],
     ];
-    
+
     // Add aircraft info if available
     if (calculationResult.aircraft) {
       rows.splice(11, 0, ['Aircraft:', `${calculationResult.aircraft.registration} (${calculationResult.aircraft.model})`]);
@@ -1086,10 +1109,10 @@ const EmissionsCalculationProcess = () => {
         rows.splice(12, 0, ['Fuel Consumption (kg):', calculationResult.fuel.toFixed(2)]);
       }
     }
-    
+
     // Convert to CSV
     const csvContent = rows.map(row => row.join(',')).join('\n');
-    
+
     // Create and download the file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -1100,39 +1123,546 @@ const EmissionsCalculationProcess = () => {
     link.click();
     document.body.removeChild(link);
   };
-  
+
   // Copy calculation details to clipboard in a formatted way
   const copyCalculationDetails = () => {
     if (!calculationResult) return;
-    
+
     const details = `
-EMISSIONS CALCULATION SUMMARY
-============================
-Route: ${calculationResult.homeAirport.name} (${calculationResult.homeAirport.id}) to ${calculationResult.awayAirport.name} (${calculationResult.awayAirport.id})
-Distance: ${calculationResult.distanceKm.toFixed(2)} km (${calculationResult.isRoundTrip ? 'Round Trip' : 'One Way'})
-Flight Type: ${calculationResult.flightType}
-Passengers: ${calculationResult.passengers}
-${calculationResult.aircraft ? `Aircraft: ${calculationResult.aircraft.registration} (${calculationResult.aircraft.model})` : ''}
+  EMISSIONS CALCULATION SUMMARY
+  ============================
+  Route: ${calculationResult.homeAirport.name} (${calculationResult.homeAirport.id}) to ${calculationResult.awayAirport.name} (${calculationResult.awayAirport.id})
+  Distance: ${calculationResult.distanceKm.toFixed(2)} km (${calculationResult.isRoundTrip ? 'Round Trip' : 'One Way'})
+  Flight Type: ${calculationResult.flightType}
+  Passengers: ${calculationResult.passengers}
+  ${calculationResult.aircraft ? `Aircraft: ${calculationResult.aircraft.registration} (${calculationResult.aircraft.model})` : ''}
+  
+  EMISSIONS RESULTS
+  ================
+  Total Emissions: ${calculationResult.totalEmissions.toFixed(3)} tonnes CO₂
+  Per Passenger: ${calculationResult.emissionsPerPassenger.toFixed(3)} tonnes CO₂
+  Emissions per km: ${(calculationResult.emissionsPerKm * 1000).toFixed(4)} kg CO₂/km
+  
+  Calculated using ${calculationResult.methodology} methodology
+  Generated on ${new Date().toISOString().split('T')[0]}
+      `.trim();
 
-EMISSIONS RESULTS
-================
-Total Emissions: ${calculationResult.totalEmissions.toFixed(3)} tonnes CO₂
-Per Passenger: ${calculationResult.emissionsPerPassenger.toFixed(3)} tonnes CO₂
-Emissions per km: ${(calculationResult.emissionsPerKm * 1000).toFixed(4)} kg CO₂/km
-
-Calculated using ${calculationResult.methodology} methodology
-Generated on ${new Date().toISOString().split('T')[0]}
-    `.trim();
-    
     navigator.clipboard.writeText(details)
       .then(() => {
-        alert("Calculation details copied to clipboard");
+        setToast({
+          show: true,
+          message: 'Calculation details copied to clipboard',
+          type: 'success'
+        });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
       })
       .catch(err => {
         console.error('Failed to copy calculation details: ', err);
+        setToast({
+          show: true,
+          message: 'Failed to copy details',
+          type: 'error'
+        });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
       });
   };
-  
+
+
+  // Fetch Leagues data from supabase
+  const fetchLeagues = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const { data, error } = await supabase.from("leagues").select("*")
+      if (error) {
+        throw error
+      }
+      if (data) {
+        setLeagues(data)
+      }
+    } catch (error) {
+      console.error("Error fetching leagues:", error)
+      toast.error("Failed to load league data")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  // Fetch seasons data from supabase
+  const fetchLeagueSeasons = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('seasons')
+        .select('season_id, start_date, end_date');
+
+      if (error) throw error;
+      setSeasons(data);
+    } catch (error) {
+      console.error("Error fetching league seasons:", error);
+    }
+  };
+
+  // Fetch Matches data from supabase
+  const fetchMatches = async () => {
+    try {
+      let query = supabase
+        .from('matches')
+        .select(`
+          *,
+          league_seasons!inner (
+            league_id,
+            leagues (
+              name
+            )
+          )`,
+          { count: 'exact' }
+        )
+      // .order("date", { ascending: sortDirection === "asc" })
+
+      // Apply league filter
+      if (selectedLeague && selectedLeague !== "all") {
+        query = query.eq('league_id', selectedLeague);
+      }
+      if (selectedSeason && selectedSeason !== "") {
+        query = query.eq("season_id", selectedSeason);
+      }
+
+      const { data: matchesData, error: matchesError, count: matchesCount } = await query;
+
+      // matchesData = data || [];
+      // matchesCount = count || 0;
+
+      if (matchesError) {
+        console.error("Error fetching matches:", matchesError)
+        setIsLoading(false)
+        return
+      }
+
+      setMatches(matchesData || []);
+      setMatchCount(matchesCount || 0);
+
+    } catch (error) {
+      console.error("Error fetching league seasons:", error);
+      toast.error("Failed to load matches data");
+      setMatches([]);
+      setMatchCount(0);
+    }
+  };
+
+  // Fetch Airports data based on selected match
+  const fetchAirportsForMatch = async (matchId) => {
+    try {
+      const { data: matchData, error: matchError } = await supabase
+        .from('matches')
+        .select('home_team_id, away_team_id')
+        .eq('match_id', matchId)
+        .single();
+
+      if (matchError) throw matchError;
+
+      const { home_team_id, away_team_id } = matchData;
+
+      // Fetch home airport based on home_team_id
+      const { data: homeAirportData, error: homeAirportError } = await supabase
+        .from('airports')
+        .select('iata_code, airport_name, latitude, longitude')
+        .eq('team_id', home_team_id)
+        .single();
+
+      if (homeAirportError) throw homeAirportError;
+
+      const formattedHomeAirport = homeAirportData
+        ? {
+          id: homeAirportData.iata_code,
+          name: homeAirportData.airport_name,
+          latitude: homeAirportData.latitude,
+          longitude: homeAirportData.longitude,
+        }
+        : null;
+
+      // Fetch away airport based on away_team_id
+      const { data: awayAirportData, error: awayAirportError } = await supabase
+        .from('airports')
+        .select('iata_code, airport_name, latitude, longitude')
+        .eq('team_id', away_team_id)
+        .single();
+
+      if (awayAirportError) throw awayAirportError;
+
+      const formattedAwayAirport = awayAirportData
+        ? {
+          id: awayAirportData.iata_code,
+          name: awayAirportData.airport_name,
+          latitude: awayAirportData.latitude,
+          longitude: awayAirportData.longitude,
+        }
+        : null;
+
+      setHomeAirport(formattedHomeAirport);
+      setAwayAirport(formattedAwayAirport);
+    } catch (error) {
+      console.error("Error fetching airports for match:", error);
+      toast.error("Failed to load airport data for the selected match");
+    }
+  };
+
+  // Initial data loading
+  useEffect(() => {
+    const loadInitialData = async () => {
+      await fetchLeagues(); // Fetch leagues first
+      await fetchLeagueSeasons(); // Then fetch seasons
+      await fetchMatches(); // Finally fetch matches
+    };
+
+    loadInitialData();
+  }, [])
+
+  // Refetch matches when filters change
+  useEffect(() => {
+    if (seasons.length > 0) { // Only fetch matches after seasons are loaded
+      fetchMatches();
+    }
+  }, [selectedLeague, selectedSeason, sortDirection]);
+
+  // Fetch airports when a match is selected
+  useEffect(() => {
+    if (selectedMatch) {
+      fetchAirportsForMatch(selectedMatch);
+    } else {
+      setHomeAirport(null);
+      setAwayAirport(null);
+    }
+  }, [selectedMatch]);
+
+  // Main render function based on active tab
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'airports':
+        return renderAirportsTab();
+      case 'matches':
+        return renderMatchesTab();
+      default:
+        return null;
+    }
+  };
+
+  // Determine if the given tab should be disabled
+  const isTabDisabled = (tabName) => {
+    switch (tabName) {
+      case 'airports':
+        return false; // Can be accessed directly
+      case 'matches':
+        return false; // Always available
+      default:
+        return false;
+    }
+  };
+
+  // UI for rendering the different tabs
+  const renderMatchesTab = () => (
+    <div className="grid grid-cols-1 gap-4 px-4 pb-4">
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <Trophy className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Select Leagues</span>
+        </label>
+        <select
+          className={`w-full p-3 bg-gray-800 border rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500 border-gray-700`}
+          value={selectedLeague}
+          onChange={(e) => setSelectedLeague(e.target.value)}
+        >
+          <option value="all">All Leagues</option>
+          {leagues.map(league => (
+            <option key={league.league_id} value={league.league_id}>
+              {league.name} ({league.country})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <CalendarDays className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Select Seasons</span>
+        </label>
+        <select
+          className={`w-full p-3 bg-gray-800 border rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500 border-gray-700`}
+          value={selectedSeason}
+          onChange={(e) => setSelectedSeason(e.target.value)}
+        >
+          <option value="">Select a Season</option>
+          {seasons.map(season => (
+            <option key={season.season_id} value={season.season_id}>
+              {season.season_id}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <Medal className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Select Matches</span>
+        </label>
+        <select
+          className={`w-full p-3 bg-gray-800 border rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500 border-gray-700`}
+          value={selectedMatch}
+          onChange={(e) => setSelectedMatch(e.target.value)}
+        >
+          <option value="">Select a Match (Total {matchCount})</option>
+          {matches.map(match => (
+            <option key={match.match_id} value={match.match_id}>
+              {match.home_team} vs {match.away_team} ({match.country})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Home Airport */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <PlaneTakeoff className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Home Airport</span>
+        </label>
+        <input
+          type="text"
+          className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-200"
+          value={homeAirport ? `${homeAirport.name} (${homeAirport.id})` : "Selecte a match"}
+          readOnly
+        />
+      </div>
+
+      {/* Away Airport */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <PlaneLanding className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Away Airport</span>
+        </label>
+        <input
+          type="text"
+          className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-200"
+          value={awayAirport ? `${awayAirport.name} (${awayAirport.id})` : "Select a match"}
+          readOnly
+        />
+      </div>
+
+      {/* Passengers */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <Users className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Number of Passengers</span>
+        </label>
+        <input
+          type="number"
+          className={`w-full p-3 bg-gray-800 border ${validationErrors.passengers ? 'border-red-500' : 'border-gray-700'
+            } rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500`}
+          value={passengers}
+          onChange={(e) => setPassengers(Number(e.target.value))}
+          min="1"
+        />
+        {validationErrors.passengers && (
+          <p className="mt-1 text-xs text-red-500 flex items-center">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            {validationErrors.passengers}
+          </p>
+        )}
+      </div>
+
+      {/* Aircraft Selection */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <Plane className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Aircraft (Optional)</span>
+        </label>
+        <select
+          className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500"
+          value={aircraftRegistration}
+          onChange={(e) => setAircraftRegistration(e.target.value)}
+        >
+          <option value="">No Specific Aircraft</option>
+          {Object.entries(aircraft_database).map(([registration, data]) => (
+            <option key={registration} value={registration}>
+              {registration} - {data.model}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Round Trip Option */}
+      <div className="flex items-center">
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            className="sr-only peer"
+            checked={isRoundTrip}
+            onChange={(e) => setIsRoundTrip(e.target.checked)}
+          />
+          <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+          <span className="ml-3 text-sm font-medium text-gray-300 flex items-center">
+            <RotateCw className="mr-2 h-4 w-4 text-emerald-500" />
+            Round Trip
+          </span>
+        </label>
+      </div>
+
+      {/* Calculate Button */}
+      <button
+        className="flex items-center justify-center w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-medium rounded-lg shadow hover:from-emerald-700 hover:to-emerald-800 focus:ring-4 focus:ring-emerald-500/50 transition-all duration-200 disabled:opacity-70"
+        onClick={handleCalculate}
+        disabled={isCalculating}
+      >
+        {isCalculating ? (
+          <>
+            <RefreshCw className="animate-spin mr-2 h-5 w-5" />
+            Calculating...
+          </>
+        ) : (
+          <>
+            <Calculator className="mr-2 h-5 w-5" />
+            Calculate Emissions
+          </>
+        )}
+      </button>
+    </div>
+  );
+
+  const renderAirportsTab = () => (
+    <div className="px-4 space-y-4">
+      {/* Home Airport */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <PlaneTakeoff className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Home Airport</span>
+        </label>
+        <select
+          className={`w-full p-3 bg-gray-800 border ${validationErrors.homeAirport || validationErrors.sameAirport ?
+            'border-red-500' : 'border-gray-700'
+            } rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500`}
+          value={homeAirport?.id || ""}
+          onChange={(e) => setHomeAirport(airports.find(a => a.id === e.target.value) || null)}
+        >
+          <option value="">Select Home Airport</option>
+          {airports.map(airport => (
+            <option key={airport.id} value={airport.id}>
+              {airport.name} ({airport.id})
+            </option>
+          ))}
+        </select>
+        {validationErrors.homeAirport && (
+          <p className="mt-1 text-xs text-red-500 flex items-center">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            {validationErrors.homeAirport}
+          </p>
+        )}
+      </div>
+
+      {/* Away Airport */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <PlaneLanding className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Away Airport</span>
+        </label>
+        <select
+          className={`w-full p-3 bg-gray-800 border ${validationErrors.awayAirport || validationErrors.sameAirport ?
+            'border-red-500' : 'border-gray-700'
+            } rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500`}
+          value={awayAirport?.id || ""}
+          onChange={(e) => setAwayAirport(airports.find(a => a.id === e.target.value) || null)}
+        >
+          <option value="">Select Away Airport</option>
+          {airports.map(airport => (
+            <option key={airport.id} value={airport.id}>
+              {airport.name} ({airport.id})
+            </option>
+          ))}
+        </select>
+        {(validationErrors.awayAirport || validationErrors.sameAirport) && (
+          <p className="mt-1 text-xs text-red-500 flex items-center">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            {validationErrors.awayAirport || validationErrors.sameAirport}
+          </p>
+        )}
+      </div>
+
+      {/* Passengers */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <Users className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Number of Passengers</span>
+        </label>
+        <input
+          type="number"
+          className={`w-full p-3 bg-gray-800 border ${validationErrors.passengers ? 'border-red-500' : 'border-gray-700'
+            } rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500`}
+          value={passengers}
+          onChange={(e) => setPassengers(Number(e.target.value))}
+          min="1"
+        />
+        {validationErrors.passengers && (
+          <p className="mt-1 text-xs text-red-500 flex items-center">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            {validationErrors.passengers}
+          </p>
+        )}
+      </div>
+
+      {/* Aircraft Selection */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-300 flex items-center">
+          <Plane className="mr-2 h-4 w-4 text-emerald-500" />
+          <span>Aircraft (Optional)</span>
+        </label>
+        <select
+          className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500"
+          value={aircraftRegistration}
+          onChange={(e) => setAircraftRegistration(e.target.value)}
+        >
+          <option value="">No Specific Aircraft</option>
+          {Object.entries(aircraft_database).map(([registration, data]) => (
+            <option key={registration} value={registration}>
+              {registration} - {data.model}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Round Trip Option */}
+      <div className="flex items-center">
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            className="sr-only peer"
+            checked={isRoundTrip}
+            onChange={(e) => setIsRoundTrip(e.target.checked)}
+          />
+          <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+          <span className="ml-3 text-sm font-medium text-gray-300 flex items-center">
+            <RotateCw className="mr-2 h-4 w-4 text-emerald-500" />
+            Round Trip
+          </span>
+        </label>
+      </div>
+
+      {/* Calculate Button */}
+      <button
+        className="flex items-center justify-center w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-medium rounded-lg shadow hover:from-emerald-700 hover:to-emerald-800 focus:ring-4 focus:ring-emerald-500/50 transition-all duration-200 disabled:opacity-70"
+        onClick={handleCalculate}
+        disabled={isCalculating}
+      >
+        {isCalculating ? (
+          <>
+            <RefreshCw className="animate-spin mr-2 h-5 w-5" />
+            Calculating...
+          </>
+        ) : (
+          <>
+            <Calculator className="mr-2 h-5 w-5" />
+            Calculate Emissions
+          </>
+        )}
+      </button>
+    </div>
+  )
+
   // Render the Admin Panel UI
   return (
     <div className="w-full space-y-6 pb-12">
@@ -1150,8 +1680,8 @@ Generated on ${new Date().toISOString().split('T')[0]}
             <AlertCircle className="h-4 w-4 mr-2" />
             {showDebugInfo ? "Hide Debug" : "Show Debug"}
           </button> */}
-          
-          <select 
+
+          <select
             className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700"
             value={selectedMethodology}
             onChange={(e) => setSelectedMethodology(e.target.value)}
@@ -1162,14 +1692,14 @@ Generated on ${new Date().toISOString().split('T')[0]}
           </select>
         </div>
       </div>
-      
+
       {/* Debug Info Panel */}
       {showDebugInfo && (
         <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
           <div className="flex justify-between items-center p-4 border-b border-gray-800">
             <h2 className="font-bold text-gray-300">Debug Information</h2>
             <div className="flex space-x-2">
-              <button 
+              <button
                 className="px-3 py-1 bg-gray-800 text-xs text-gray-300 rounded hover:bg-gray-700"
                 onClick={clearDebugLogs}
               >
@@ -1183,12 +1713,11 @@ Generated on ${new Date().toISOString().split('T')[0]}
             ) : (
               <div className="space-y-1">
                 {debugLogs.map((log, index) => (
-                  <div 
-                    key={index} 
-                    className={`${
-                      log.type === 'error' ? 'text-red-400' : 
+                  <div
+                    key={index}
+                    className={`${log.type === 'error' ? 'text-red-400' :
                       log.type === 'warning' ? 'text-yellow-400' : 'text-gray-400'
-                    }`}
+                      }`}
                   >
                     <span className="text-gray-500">[{log.timestamp}]</span> {log.message}
                   </div>
@@ -1198,7 +1727,7 @@ Generated on ${new Date().toISOString().split('T')[0]}
           </div>
         </div>
       )}
-      
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Inputs */}
@@ -1206,160 +1735,47 @@ Generated on ${new Date().toISOString().split('T')[0]}
           <div className="p-4 border-b border-gray-800">
             <h2 className="font-bold text-gray-300">Input Parameters</h2>
           </div>
-          <div className="p-4 space-y-4">
-            {/* Home Airport */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-300 flex items-center">
-                <PlaneTakeoff className="mr-2 h-4 w-4 text-emerald-500" />
-                <span>Home Airport</span>
-              </label>
-              <select 
-                className={`w-full p-3 bg-gray-800 border ${
-                  validationErrors.homeAirport || validationErrors.sameAirport ? 
-                  'border-red-500' : 'border-gray-700'
-                } rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500`}
-                value={homeAirport?.id || ""}
-                onChange={(e) => setHomeAirport(airports.find(a => a.id === e.target.value) || null)}
+
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <TabsList className="bg-gray-800 border-gray-700 m-4">
+              <TabsTrigger
+                value="airports"
+                className="data-[state=active]:bg-gray-700 data-[state=active]:shadow-none"
+                disabled={isTabDisabled('airports')}
               >
-                <option value="">Select Home Airport</option>
-                {airports.map(airport => (
-                  <option key={airport.id} value={airport.id}>
-                    {airport.name} ({airport.id})
-                  </option>
-                ))}
-              </select>
-              {validationErrors.homeAirport && (
-                <p className="mt-1 text-xs text-red-500 flex items-center">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {validationErrors.homeAirport}
-                </p>
-              )}
-            </div>
-            
-            {/* Away Airport */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-300 flex items-center">
-                <PlaneLanding className="mr-2 h-4 w-4 text-emerald-500" />
-                <span>Away Airport</span>
-              </label>
-              <select 
-                className={`w-full p-3 bg-gray-800 border ${
-                  validationErrors.awayAirport || validationErrors.sameAirport ? 
-                  'border-red-500' : 'border-gray-700'
-                } rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500`}
-                value={awayAirport?.id || ""}
-                onChange={(e) => setAwayAirport(airports.find(a => a.id === e.target.value) || null)}
+                Airports
+              </TabsTrigger>
+              <TabsTrigger
+                value="matches"
+                className="data-[state=active]:bg-gray-700 data-[state=active]:shadow-none"
+                disabled={isTabDisabled('matches')}
               >
-                <option value="">Select Away Airport</option>
-                {airports.map(airport => (
-                  <option key={airport.id} value={airport.id}>
-                    {airport.name} ({airport.id})
-                  </option>
-                ))}
-              </select>
-              {(validationErrors.awayAirport || validationErrors.sameAirport) && (
-                <p className="mt-1 text-xs text-red-500 flex items-center">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {validationErrors.awayAirport || validationErrors.sameAirport}
-                </p>
-              )}
-            </div>
-            
-            {/* Passengers */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-300 flex items-center">
-                <Users className="mr-2 h-4 w-4 text-emerald-500" />
-                <span>Number of Passengers</span>
-              </label>
-              <input 
-                type="number" 
-                className={`w-full p-3 bg-gray-800 border ${
-                  validationErrors.passengers ? 'border-red-500' : 'border-gray-700'
-                } rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500`}
-                value={passengers}
-                onChange={(e) => setPassengers(Number(e.target.value))}
-                min="1"
-              />
-              {validationErrors.passengers && (
-                <p className="mt-1 text-xs text-red-500 flex items-center">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {validationErrors.passengers}
-                </p>
-              )}
-            </div>
-            
-            {/* Aircraft Selection */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-300 flex items-center">
-                <Plane className="mr-2 h-4 w-4 text-emerald-500" />
-                <span>Aircraft (Optional)</span>
-              </label>
-              <select 
-                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500"
-                value={aircraftRegistration}
-                onChange={(e) => setAircraftRegistration(e.target.value)}
-              >
-                <option value="">No Specific Aircraft</option>
-                {Object.entries(aircraft_database).map(([registration, data]) => (
-                  <option key={registration} value={registration}>
-                    {registration} - {data.model}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Round Trip Option */}
-            <div className="flex items-center">
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="sr-only peer"
-                  checked={isRoundTrip}
-                  onChange={(e) => setIsRoundTrip(e.target.checked)}
-                />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                <span className="ml-3 text-sm font-medium text-gray-300 flex items-center">
-                  <RotateCw className="mr-2 h-4 w-4 text-emerald-500" />
-                  Round Trip
-                </span>
-              </label>
-            </div>
-            
-            {/* Calculate Button */}
-            <button 
-              className="flex items-center justify-center w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-medium rounded-lg shadow hover:from-emerald-700 hover:to-emerald-800 focus:ring-4 focus:ring-emerald-500/50 transition-all duration-200 disabled:opacity-70"
-              onClick={handleCalculate}
-              disabled={isCalculating}
-            >
-              {isCalculating ? (
-                <>
-                  <RefreshCw className="animate-spin mr-2 h-5 w-5" />
-                  Calculating...
-                </>
-              ) : (
-                <>
-                  <Calculator className="mr-2 h-5 w-5" />
-                  Calculate Emissions
-                </>
-              )}
-            </button>
-          </div>
+                Matches
+              </TabsTrigger>
+            </TabsList>
+
+            {renderContent()}
+          </Tabs>
         </div>
-        
+
         {/* Middle Column - Calculation Process */}
         <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden lg:col-span-2">
           <div className="p-4 border-b border-gray-800 flex justify-between items-center">
             <h2 className="font-bold text-gray-300">Calculation Process</h2>
             {calculationResult && (
               <div className="flex space-x-2">
-                <button 
+                <button
                   className="px-3 py-1 bg-gray-800 text-xs text-gray-300 rounded hover:bg-gray-700 flex items-center"
                   onClick={copyCalculationDetails}
                 >
                   <Clipboard className="h-3 w-3 mr-1" />
                   Copy
                 </button>
-                <button 
+                <button
                   className="px-3 py-1 bg-gray-800 text-xs text-gray-300 rounded hover:bg-gray-700 flex items-center"
                   onClick={downloadCalculationCSV}
                 >
@@ -1369,8 +1785,8 @@ Generated on ${new Date().toISOString().split('T')[0]}
               </div>
             )}
           </div>
-          
-          <div className="p-4 overflow-y-auto h-[600px]">
+
+          <div className={`p-4 overflow-y-auto ${activeTab === "airports" ? "h-[600px]" : "h-[800px]"}`}>
             {!calculationResult ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-500">
                 <Calculator className="h-16 w-16 mb-4 text-gray-700" />
@@ -1384,8 +1800,8 @@ Generated on ${new Date().toISOString().split('T')[0]}
                     <div>
                       <h3 className="font-bold text-emerald-400">Calculation Summary</h3>
                       <p className="text-gray-300 text-sm">
-                        {calculationResult.homeAirport.id} to {calculationResult.awayAirport.id} 
-                        ({calculationResult.isRoundTrip ? 'Round Trip' : 'One Way'}) 
+                        {calculationResult.homeAirport.id} to {calculationResult.awayAirport.id}
+                        ({calculationResult.isRoundTrip ? 'Round Trip' : 'One Way'})
                         with {calculationResult.passengers} passengers
                       </p>
                     </div>
@@ -1395,12 +1811,12 @@ Generated on ${new Date().toISOString().split('T')[0]}
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Calculation steps */}
                 <div className="space-y-3">
                   {calculationSteps.map((step) => (
                     <div key={step.id} className="border border-gray-800 rounded-lg overflow-hidden">
-                      <div 
+                      <div
                         className="p-3 bg-gray-800/50 flex justify-between items-center cursor-pointer"
                         onClick={() => toggleSection(step.id)}
                       >
@@ -1421,7 +1837,7 @@ Generated on ${new Date().toISOString().split('T')[0]}
                     </div>
                   ))}
                 </div>
-                
+
                 {/* Alternative methodology comparisons */}
                 {alternativeCalculations && alternativeCalculations.length > 0 && (
                   <div className="border border-gray-800 rounded-lg overflow-hidden mt-6">
@@ -1436,14 +1852,14 @@ Generated on ${new Date().toISOString().split('T')[0]}
                             <div className="text-xl font-bold text-white">{alt.totalEmissions}</div>
                             <div className="text-xs text-gray-400">tonnes CO₂</div>
                             <div className={`text-xs mt-1 ${parseFloat(alt.percentDifference) > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                              {parseFloat(alt.percentDifference) > 0 ? '▲' : '▼'} 
+                              {parseFloat(alt.percentDifference) > 0 ? '▲' : '▼'}
                               {Math.abs(parseFloat(alt.percentDifference))}% from {selectedMethodology}
                             </div>
                           </div>
                         ))}
                       </div>
                       <p className="text-xs text-gray-500 mt-3">
-                        Note: Different methodologies produce varying results due to different factors, adjustment weights, 
+                        Note: Different methodologies produce varying results due to different factors, adjustment weights,
                         and assumptions in their calculation processes.
                       </p>
                     </div>
@@ -1454,7 +1870,7 @@ Generated on ${new Date().toISOString().split('T')[0]}
           </div>
         </div>
       </div>
-      
+
       {/* Previous Calculations History */}
       <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
         <div className="p-4 border-b border-gray-800">
@@ -1501,6 +1917,17 @@ Generated on ${new Date().toISOString().split('T')[0]}
           </table>
         </div>
       </div>
+      {toast.show && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-2 rounded-md shadow-lg flex items-center ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+          } text-white animate-fade-in-up`}>
+          {toast.type === 'success' ? (
+            <Check className="h-5 w-5 mr-2" />
+          ) : (
+            <AlertCircle className="h-5 w-5 mr-2" />
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 };
