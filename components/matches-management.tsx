@@ -239,35 +239,40 @@ const MatchesManagement = ({
 
   return (
     <Card className="bg-gray-900 border-gray-800">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <CardTitle className="text-xl">Matches</CardTitle>
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-2">
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 gap-2 sm:gap-0 w-full sm:w-auto">
+          {/* Search Input with Icon */}
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
             <Search className="h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search matches..."
-              className="w-64 bg-gray-800 border-gray-700"
-              value={searchTerm} // Use prop instead of local state
-              onChange={(e) => onSearch(e.target.value)} // Call prop function
+              className="w-full sm:w-64 bg-gray-800 border-gray-700"
+              value={searchTerm}
+              onChange={(e) => onSearch(e.target.value)}
             />
           </div>
 
+          {/* League Selector */}
           <SearchableSelect
             value={selectedLeague}
             onValueChange={setSelectedLeague}
             placeholder="All Leagues"
             options={leagueOptions}
             label="Leagues"
-            className="w-48"
+            className="w-full sm:w-48"
             includeAll={true}
           />
 
-          <Button onClick={openAddDialog} size="sm">
+          {/* Add Match Button */}
+          <Button onClick={openAddDialog} size="sm" className="w-full sm:w-auto">
             <PlusCircle className="h-4 w-4 mr-2" />
             Add Match
           </Button>
         </div>
       </CardHeader>
+
 
       <CardContent>
         <Table>
