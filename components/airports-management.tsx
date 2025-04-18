@@ -99,24 +99,29 @@ export default function AirportsManagement({
 
   return (
     <Card className="bg-gray-900 border-gray-800">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <CardTitle className="text-xl">Airports</CardTitle>
-        <div className="flex items-center space-x-2">
-          <div className="relative">
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+          {/* Search Input with Icon */}
+          <div className="relative w-full sm:w-64">
             <Input
               placeholder="Search airports..."
-              className="w-64 bg-gray-800 border-gray-700 pl-8"
-              value={searchTerm} // Use prop instead of local state
-              onChange={(e) => onSearch(e.target.value)} // Call prop function
+              className="w-full bg-gray-800 border-gray-700 pl-8"
+              value={searchTerm}
+              onChange={(e) => onSearch(e.target.value)}
             />
             <MapPin className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
           </div>
-          <Button onClick={openAddDialog} size="sm">
+
+          {/* Add Button */}
+          <Button onClick={openAddDialog} size="sm" className="w-full sm:w-auto">
             <PlusCircle className="h-4 w-4 mr-2" />
             Add Airport
           </Button>
         </div>
       </CardHeader>
+
       <CardContent>
         {isLoading ? (
           <div className="flex justify-center my-12">

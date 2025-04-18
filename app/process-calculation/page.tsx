@@ -23,15 +23,17 @@ import {
   Medal
 } from 'lucide-react';
 import { supabase } from "@/lib/supabase/client";
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { League, Match, Season } from '@/lib/types';
 import { toast } from 'sonner';
+import ErrorBoundary from './ErrorBoundary';
+import MapWrapper from './MapWrapper';
 
 const EmissionsCalculationProcess = () => {
   const [leagues, setLeagues] = useState<League[]>([])
   const [seasons, setSeasons] = useState<Season[]>([])
   const [matches, setMatches] = useState<Match[]>([])
-  const [matchCount, setMatchCount] = useState(10)
+  const [matchCount, setMatchCount] = useState(0)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
@@ -51,7 +53,12 @@ const EmissionsCalculationProcess = () => {
   const [activeTab, setActiveTab] = useState("airports"); // Default to airports tab
   const [selectedLeague, setSelectedLeague] = useState("all"); // Default to "All"
   const [selectedSeason, setSelectedSeason] = useState(""); // Default season must be unset
-  const [selectedMatch, setSelectedMatch] = useState(""); // No match selected by default
+  const [selectedMatch, setSelectedMatch] = useState(""); // No match selected by default 
+
+  const [homeAirportCoords, setHomeAirportCoords] = useState(null);
+  const [awayAirportCoords, setAwayAirportCoords] = useState(null);
+  const [routePath, setRoutePath] = useState([]);
+  const [routeMode, setRouteMode] = useState<'air' | 'road'>('road');
 
   // States for calculation process display
   const [calculationSteps, setCalculationSteps] = useState([]);
@@ -62,11 +69,10 @@ const EmissionsCalculationProcess = () => {
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [debugLogs, setDebugLogs] = useState([]);
   const [calculationHistory, setCalculationHistory] = useState([]);
-  const [toast, setToast] = useState({
-    show: false,
-    message: '',
-    type: 'success' // 'success' or 'error'
-  });
+
+  // Geoapify API Key
+  const GEOAPIFY_API_KEY = 'd26da08a31474ffb85e3375fa257b302';
+
   // Aircraft cruising speeds in km/h (from your original code)
   const aircraftCruisingSpeeds = {
     "Boeing 737-8K5(WL)": 840,
@@ -1129,44 +1135,32 @@ const EmissionsCalculationProcess = () => {
     if (!calculationResult) return;
 
     const details = `
-  EMISSIONS CALCULATION SUMMARY
-  ============================
-  Route: ${calculationResult.homeAirport.name} (${calculationResult.homeAirport.id}) to ${calculationResult.awayAirport.name} (${calculationResult.awayAirport.id})
-  Distance: ${calculationResult.distanceKm.toFixed(2)} km (${calculationResult.isRoundTrip ? 'Round Trip' : 'One Way'})
-  Flight Type: ${calculationResult.flightType}
-  Passengers: ${calculationResult.passengers}
-  ${calculationResult.aircraft ? `Aircraft: ${calculationResult.aircraft.registration} (${calculationResult.aircraft.model})` : ''}
-  
-  EMISSIONS RESULTS
-  ================
-  Total Emissions: ${calculationResult.totalEmissions.toFixed(3)} tonnes CO₂
-  Per Passenger: ${calculationResult.emissionsPerPassenger.toFixed(3)} tonnes CO₂
-  Emissions per km: ${(calculationResult.emissionsPerKm * 1000).toFixed(4)} kg CO₂/km
-  
-  Calculated using ${calculationResult.methodology} methodology
-  Generated on ${new Date().toISOString().split('T')[0]}
-      `.trim();
+EMISSIONS CALCULATION SUMMARY
+============================
+Route: ${calculationResult.homeAirport.name} (${calculationResult.homeAirport.id}) to ${calculationResult.awayAirport.name} (${calculationResult.awayAirport.id})
+Distance: ${calculationResult.distanceKm.toFixed(2)} km (${calculationResult.isRoundTrip ? 'Round Trip' : 'One Way'})
+Flight Type: ${calculationResult.flightType}
+Passengers: ${calculationResult.passengers}
+${calculationResult.aircraft ? `Aircraft: ${calculationResult.aircraft.registration} (${calculationResult.aircraft.model})` : ''}
+
+EMISSIONS RESULTS
+================
+Total Emissions: ${calculationResult.totalEmissions.toFixed(3)} tonnes CO₂
+Per Passenger: ${calculationResult.emissionsPerPassenger.toFixed(3)} tonnes CO₂
+Emissions per km: ${(calculationResult.emissionsPerKm * 1000).toFixed(4)} kg CO₂/km
+
+Calculated using ${calculationResult.methodology} methodology
+Generated on ${new Date().toISOString().split('T')[0]}
+    `.trim();
 
     navigator.clipboard.writeText(details)
       .then(() => {
-        setToast({
-          show: true,
-          message: 'Calculation details copied to clipboard',
-          type: 'success'
-        });
-        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+        alert("Calculation details copied to clipboard");
       })
       .catch(err => {
         console.error('Failed to copy calculation details: ', err);
-        setToast({
-          show: true,
-          message: 'Failed to copy details',
-          type: 'error'
-        });
-        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
       });
   };
-
 
   // Fetch Leagues data from supabase
   const fetchLeagues = useCallback(async () => {
@@ -1251,24 +1245,34 @@ const EmissionsCalculationProcess = () => {
   // Fetch Airports data based on selected match
   const fetchAirportsForMatch = async (matchId) => {
     try {
+      console.log('Fetching airports for match ID:', matchId);
       const { data: matchData, error: matchError } = await supabase
         .from('matches')
-        .select('home_team_id, away_team_id')
+        .select('home_team_id, away_team_id, home_city, away_city, stadium')
         .eq('match_id', matchId)
         .single();
 
-      if (matchError) throw matchError;
+      if (matchError) {
+        console.error('Match fetch error:', matchError);
+        throw matchError;
+      }
 
-      const { home_team_id, away_team_id } = matchData;
+      console.log('Match Data:', matchData);
+      const { home_team_id, away_team_id, home_city, away_city, stadium } = matchData;
 
       // Fetch home airport based on home_team_id
-      const { data: homeAirportData, error: homeAirportError } = await supabase
+      let homeAirportData = null;
+      const { data: homeAirportQuery, error: homeAirportError } = await supabase
         .from('airports')
         .select('iata_code, airport_name, latitude, longitude')
         .eq('team_id', home_team_id)
         .single();
 
-      if (homeAirportError) throw homeAirportError;
+      if (homeAirportError) {
+        console.warn('Home Airport fetch error, falling back to geocoding:', homeAirportError);
+      } else {
+        homeAirportData = homeAirportQuery;
+      }
 
       const formattedHomeAirport = homeAirportData
         ? {
@@ -1276,17 +1280,38 @@ const EmissionsCalculationProcess = () => {
           name: homeAirportData.airport_name,
           latitude: homeAirportData.latitude,
           longitude: homeAirportData.longitude,
+          iata_code: homeAirportData.iata_code,
         }
-        : null;
+        : await (async () => {
+          const homeLocation = home_city || stadium;
+          if (homeLocation) {
+            const coords = await geocodeCity(homeLocation);
+            if (coords) {
+              return {
+                id: 'fallback',
+                name: `Nearest to ${homeLocation}`,
+                latitude: coords[0],
+                longitude: coords[1],
+                iata_code: 'N/A',
+              };
+            }
+          }
+          return null;
+        })();
 
       // Fetch away airport based on away_team_id
-      const { data: awayAirportData, error: awayAirportError } = await supabase
+      let awayAirportData = null;
+      const { data: awayAirportQuery, error: awayAirportError } = await supabase
         .from('airports')
         .select('iata_code, airport_name, latitude, longitude')
         .eq('team_id', away_team_id)
         .single();
 
-      if (awayAirportError) throw awayAirportError;
+      if (awayAirportError) {
+        console.warn('Away Airport fetch error, falling back to geocoding:', awayAirportError);
+      } else {
+        awayAirportData = awayAirportQuery;
+      }
 
       const formattedAwayAirport = awayAirportData
         ? {
@@ -1294,16 +1319,154 @@ const EmissionsCalculationProcess = () => {
           name: awayAirportData.airport_name,
           latitude: awayAirportData.latitude,
           longitude: awayAirportData.longitude,
+          iata_code: awayAirportData.iata_code,
         }
-        : null;
+        : await (async () => {
+          if (away_city) {
+            const coords = await geocodeCity(away_city);
+            if (coords) {
+              return {
+                id: 'fallback',
+                name: `Nearest to ${away_city}`,
+                latitude: coords[0],
+                longitude: coords[1],
+                iata_code: 'N/A',
+              };
+            }
+          }
+          return null;
+        })();
 
       setHomeAirport(formattedHomeAirport);
       setAwayAirport(formattedAwayAirport);
+
+      if (!formattedHomeAirport || !formattedAwayAirport) {
+        toast.error('Could not find airports or coordinates for the selected match');
+      }
     } catch (error) {
-      console.error("Error fetching airports for match:", error);
-      toast.error("Failed to load airport data for the selected match");
+      console.error('Error fetching airports for match:', error);
+      toast.error('Failed to load airport data for the selected match');
+      setHomeAirport(null);
+      setAwayAirport(null);
     }
   };
+
+  // Function to geocode city names to coordinates (as a fallback)
+  const geocodeCity = async (location: string): Promise<number[] | null> => {
+    try {
+      console.log('Geocoding location:', location);
+      const response = await fetch(
+        `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(location)}&apiKey=${GEOAPIFY_API_KEY}`
+      );
+      const data = await response.json();
+      if (data.features && data.features.length > 0) {
+        const { coordinates } = data.features[0].geometry;
+        console.log('Geocoded coordinates:', coordinates);
+        return [coordinates[1], coordinates[0]]; // [lat, lon]
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error geocoding ${location}:`, error);
+      return null;
+    }
+  };
+
+  // Function to fetch route between two coordinates
+  const fetchRouteroad = async (startCoords, endCoords) => {
+    try {
+      console.log('Fetching route with waypoints:', startCoords, endCoords);
+      const response = await fetch(
+        `https://api.geoapify.com/v1/routing?waypoints=${startCoords.join(',')}|${endCoords.join(',')}&mode=drive&apiKey=${GEOAPIFY_API_KEY}`
+      );
+      const data = await response.json();
+      console.log('Route API response:', data);
+      if (data.features && data.features.length > 0) {
+        const coordinates = data.features[0].geometry.coordinates[0].map(coord => [coord[1], coord[0]]);
+        setRoutePath(coordinates);
+      } else {
+        console.log('No route found, resetting routePath');
+        setRoutePath([]);
+      }
+    } catch (error) {
+      console.error('Error fetching route:', error);
+      setRoutePath([]);
+    }
+  };
+
+  const fetchRoute = async (startCoords: number[], endCoords: number[]) => {
+    try {
+      console.log('Fetching route with waypoints:', startCoords, endCoords);
+      if (routeMode === 'air') {
+        // For air route, create a straight line
+        setRoutePath([startCoords, endCoords]);
+      } else {
+        // For road route, fetch from Geoapify
+        const response = await fetch(
+          `https://api.geoapify.com/v1/routing?waypoints=${startCoords.join(',')}|${endCoords.join(',')}&mode=drive&apiKey=${GEOAPIFY_API_KEY}`
+        );
+        const data = await response.json();
+        console.log('Route API response:', data);
+        if (data.features && data.features.length > 0) {
+          const coordinates = data.features[0].geometry.coordinates[0].map((coord: number[]) => [coord[1], coord[0]]);
+          setRoutePath(coordinates);
+        } else {
+          console.log('No route found, resetting routePath');
+          setRoutePath([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching route:', error);
+      setRoutePath([]);
+    }
+  };
+
+  // Validate coordinates before rendering
+  const areValidCoords = (coords) => {
+    return Array.isArray(coords) && coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1]);
+  };
+
+  // Update map when airports are selected
+  useEffect(() => {
+    const updateMap = async () => {
+      console.log(`Selected Match: ${selectedMatch} Home Airport: ${homeAirport} Away Airport: ${awayAirport}`);
+
+      if (selectedMatch && homeAirport && awayAirport) {
+        const homeLat = parseFloat(homeAirport.latitude);
+        const homeLon = parseFloat(homeAirport.longitude);
+        const awayLat = parseFloat(awayAirport.latitude);
+        const awayLon = parseFloat(awayAirport.longitude);
+
+        const homeCoords = [homeLat, homeLon];
+        const awayCoords = [awayLat, awayLon];
+
+        console.log(`Home Airport Coords: ${homeCoords} Away Airport Coords: ${awayCoords}`);
+
+        if (areValidCoords(homeCoords) && areValidCoords(awayCoords)) {
+          setHomeAirportCoords(homeCoords);
+          setAwayAirportCoords(awayCoords);
+          await fetchRoute(awayCoords, homeCoords);
+        } else {
+          console.error('Invalid coordinates:', { homeCoords, awayCoords });
+          setHomeAirportCoords(null);
+          setAwayAirportCoords(null);
+          setRoutePath([]);
+        }
+      } else {
+        console.log('Resetting map due to missing data');
+        setHomeAirportCoords(null);
+        setAwayAirportCoords(null);
+        setRoutePath([]);
+      }
+    };
+
+    // Add a slight delay to ensure state updates are fully propagated
+    const timer = setTimeout(() => {
+      updateMap();
+    }, 100);
+
+    return () => clearTimeout(timer);
+    // updateMap();
+  }, [selectedMatch, homeAirport, awayAirport, routeMode]);
 
   // Initial data loading
   useEffect(() => {
@@ -1444,6 +1607,54 @@ const EmissionsCalculationProcess = () => {
           readOnly
         />
       </div>
+
+      {/* Map Section */}
+      {/* {selectedMatch && (
+        <div className="space-y-2">
+          {(() => {
+            console.log('Map rendering condition:', {
+              homeAirportCoords,
+              awayAirportCoords,
+              routePath,
+              homeAirport,
+              awayAirport,
+            });
+            if (homeAirportCoords && awayAirportCoords && routePath && homeAirport && awayAirport) {
+              console.log('Rendering map with data (Successfully)');
+              return (
+                <ErrorBoundary>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-300 flex items-center">
+                      <span>
+                        Route Map: {awayAirport.name} to {homeAirport.name}
+                      </span>
+                    </label>
+                    <div className="h-64 w-full rounded-lg overflow-hidden">
+                      <MapWrapper
+                        homeAirportCoords={homeAirportCoords}
+                        awayAirportCoords={awayAirportCoords}
+                        routePath={routePath}
+                        homeAirport={homeAirport}
+                        awayAirport={awayAirport}
+                        GEOAPIFY_API_KEY={GEOAPIFY_API_KEY}
+                      />
+                    </div>
+                  </div>
+                </ErrorBoundary>
+              );
+            } else {
+              console.log('Map not rendering due to missing data');
+              return (
+                <div className="text-gray-300">
+                  {homeAirport && awayAirport
+                    ? 'Loading map...'
+                    : 'Please ensure airports or coordinates are available for the selected match.'}
+                </div>
+              );
+            }
+          })()}
+        </div>
+      )} */}
 
       {/* Passengers */}
       <div className="space-y-2">
@@ -1786,6 +1997,58 @@ const EmissionsCalculationProcess = () => {
             )}
           </div>
 
+          {/* Map Section */}
+          {selectedMatch && (
+            <div className="space-y-2 p-4">
+              {(() => {
+                console.log('Map rendering condition:', {
+                  homeAirportCoords,
+                  awayAirportCoords,
+                  routePath,
+                  homeAirport,
+                  awayAirport,
+                });
+                if (homeAirportCoords && awayAirportCoords && routePath && homeAirport && awayAirport) {
+                  console.log('Rendering map with data (Successfully)');
+                  return (
+                    <ErrorBoundary>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                          <span className="bg-gradient-to-r from-emerald-500 to-teal-500 text-transparent bg-clip-text text-lg font-semibold">
+                            Route Map: {awayAirport.name} to {homeAirport.name}
+                          </span>
+                          <Plane className="h-5 w-5 text-emerald-500" />
+                        </label>
+                        <div className="h-80 w-full rounded-lg overflow-hidden shadow-lg">
+                          <MapWrapper
+                            homeAirportCoords={homeAirportCoords}
+                            awayAirportCoords={awayAirportCoords}
+                            routePath={routePath}
+                            homeAirport={homeAirport}
+                            awayAirport={awayAirport}
+                            GEOAPIFY_API_KEY={GEOAPIFY_API_KEY}
+                            routeMode={routeMode}
+                            setRouteMode={setRouteMode}
+                            mapId="primary-map" // Unique ID for the first map
+                          />
+                        </div>
+                      </div>
+                    </ErrorBoundary>
+                  );
+                } else {
+                  console.log('Map not rendering due to missing data');
+                  return (
+                    <div className="text-gray-300">
+                      {homeAirport && awayAirport
+                        ? 'Loading map...'
+                        : 'Please ensure airports or coordinates are available for the selected match.'}
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+          )}
+
           <div className={`p-4 overflow-y-auto ${activeTab === "airports" ? "h-[600px]" : "h-[800px]"}`}>
             {!calculationResult ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -1917,17 +2180,6 @@ const EmissionsCalculationProcess = () => {
           </table>
         </div>
       </div>
-      {toast.show && (
-        <div className={`fixed bottom-4 right-4 z-50 px-4 py-2 rounded-md shadow-lg flex items-center ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
-          } text-white animate-fade-in-up`}>
-          {toast.type === 'success' ? (
-            <Check className="h-5 w-5 mr-2" />
-          ) : (
-            <AlertCircle className="h-5 w-5 mr-2" />
-          )}
-          <span>{toast.message}</span>
-        </div>
-      )}
     </div>
   );
 };
