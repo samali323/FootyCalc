@@ -1,4 +1,5 @@
 'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import Map from 'ol/Map';
 import View from 'ol/View';
@@ -9,8 +10,11 @@ import XYZ from 'ol/source/XYZ';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import LineString from 'ol/geom/LineString';
-import { Icon, Style, Text, Stroke } from 'ol/style';
+import { Icon, Style, Text, Stroke, Fill } from 'ol/style';
 import { fromLonLat } from 'ol/proj';
+import { getDistance } from 'ol/sphere';
+import { Plus, Minus, Plane, Car, Info } from 'lucide-react';
+
 interface MapWrapperProps {
   homeAirportCoords: [number, number];
   awayAirportCoords: [number, number];
@@ -18,7 +22,11 @@ interface MapWrapperProps {
   homeAirport: { id: string; name: string; latitude: number; longitude: number; iata_code?: string };
   awayAirport: { id: string; name: string; latitude: number; longitude: number; iata_code?: string };
   GEOAPIFY_API_KEY: string;
+  routeMode: 'air' | 'road';
+  setRouteMode: (mode: 'air' | 'road') => void;
+  mapId?: string;
 }
+
 const MapWrapper: React.FC<MapWrapperProps> = ({
   homeAirportCoords,
   awayAirportCoords,
@@ -26,90 +34,328 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
   homeAirport,
   awayAirport,
   GEOAPIFY_API_KEY,
+  routeMode,
+  setRouteMode,
+  mapId = 'default-map',
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<Map | null>(null);
+  const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const [isInfoBoxVisible, setIsInfoBoxVisible] = useState(false);
+
+  const areValidCoords = (coords: [number, number] | null): boolean => {
+    return (
+      Array.isArray(coords) &&
+      coords.length === 2 &&
+      !isNaN(coords[0]) &&
+      !isNaN(coords[1]) &&
+      coords[0] >= -90 &&
+      coords[0] <= 90 &&
+      coords[1] >= -180 &&
+      coords[1] <= 180
+    );
+  };
+
+  const getTileSource = () => {
+    return new XYZ({
+      url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attributions: '© OpenStreetMap contributors',
+      tileSize: 256,
+      maxZoom: 19,
+    });
+  };
+
   useEffect(() => {
-    setIsMounted(true);
-    return () => setIsMounted(false);
-  }, []);
-  useEffect(() => {
-    if (!isMounted || !mapRef.current) return;
+    if (!mapRef.current || !tooltipRef.current) return;
+
+    const mapTargetId = `map-${mapId}`;
+    mapRef.current.id = mapTargetId;
+
+    if (!areValidCoords(homeAirportCoords) || !areValidCoords(awayAirportCoords)) {
+      console.error('Invalid coordinates:', { homeAirportCoords, awayAirportCoords });
+      return;
+    }
+
     const homeCoords = fromLonLat([homeAirportCoords[1], homeAirportCoords[0]]);
     const awayCoords = fromLonLat([awayAirportCoords[1], awayAirportCoords[0]]);
+
+    const airDistanceKm = getDistance(
+      [homeAirportCoords[1], homeAirportCoords[0]],
+      [awayAirportCoords[1], awayAirportCoords[0]]
+    ) / 1000;
+
+    let roadDistanceKm = airDistanceKm;
+    if (routeMode === 'road' && routePath && routePath.length >= 2) {
+      roadDistanceKm = 0;
+      for (let i = 1; i < routePath.length; i++) {
+        const prev = routePath[i - 1];
+        const curr = routePath[i];
+        roadDistanceKm += getDistance(
+          [prev[1], prev[0]],
+          [curr[1], curr[0]]
+        ) / 1000;
+      }
+    }
+
+    const distanceKm = routeMode === 'air' ? airDistanceKm : roadDistanceKm;
+
+    // Estimate travel time (average speed: air ~800 km/h, road ~80 km/h)
+    const airTravelTimeHours = airDistanceKm / 800;
+    const roadTravelTimeHours = roadDistanceKm / 80;
+    const travelTimeHours = routeMode === 'air' ? airTravelTimeHours : roadTravelTimeHours;
+    const travelTimeFormatted = `${Math.floor(travelTimeHours)}h ${Math.round((travelTimeHours % 1) * 60)}m`;
+
+    // Estimate fuel consumption (mock data: air ~0.1 tons/km, road ~0.01 tons/km)
+    const airFuelConsumptionTons = airDistanceKm * 0.1;
+    const roadFuelConsumptionTons = roadDistanceKm * 0.01;
+    const fuelConsumptionTons = routeMode === 'air' ? airFuelConsumptionTons : roadFuelConsumptionTons;
+
     const homeFeature = new Feature({
       geometry: new Point(homeCoords),
       name: `Home: ${homeAirport.name} ${homeAirport.iata_code ? `(${homeAirport.iata_code})` : ''}`,
+      type: 'airport',
+      details: `Latitude: ${homeAirport.latitude}, Longitude: ${homeAirport.longitude}`,
     });
     homeFeature.setStyle(
       new Style({
         image: new Icon({
-          src: 'https://openlayers.org/en/latest/examples/data/icon.png',
+          src: 'https://img.icons8.com/color/48/000000/airplane-take-off.png',
           scale: 0.5,
+          color: '#1E90FF', // Blue for home
         }),
         text: new Text({
           text: `Home: ${homeAirport.name}`,
           offsetY: -25,
-          fill: new Stroke({ color: 'black' }),
+          fill: new Fill({ color: '#000' }),
+          backgroundFill: new Fill({ color: 'rgba(255, 255, 255, 0.7)' }),
+          padding: [2, 2, 2, 2],
         }),
       })
     );
+
     const awayFeature = new Feature({
       geometry: new Point(awayCoords),
       name: `Away: ${awayAirport.name} ${awayAirport.iata_code ? `(${awayAirport.iata_code})` : ''}`,
+      type: 'airport',
+      details: `Latitude: ${awayAirport.latitude}, Longitude: ${awayAirport.longitude}`,
     });
     awayFeature.setStyle(
       new Style({
         image: new Icon({
-          src: 'https://openlayers.org/en/latest/examples/data/icon.png',
+          src: 'https://img.icons8.com/color/48/000000/airplane-take-off.png',
           scale: 0.5,
+          color: '#FF5555', // Red for away
         }),
         text: new Text({
           text: `Away: ${awayAirport.name}`,
           offsetY: -25,
-          fill: new Stroke({ color: 'black' }),
+          fill: new Fill({ color: '#000' }),
+          backgroundFill: new Fill({ color: 'rgba(255, 255, 255, 0.7)' }),
+          padding: [2, 2, 2, 2],
         }),
       })
     );
-    const routeFeature = new Feature({
-      geometry: new LineString(routePath.map(coord => fromLonLat([coord[1], coord[0]]))),
-    });
-    routeFeature.setStyle(
-      new Style({
-        stroke: new Stroke({
-          color: 'blue',
-          width: 2,
-        }),
-      })
-    );
+
+    const features: Feature[] = [homeFeature, awayFeature];
+
+    let routeFeature: Feature | null = null;
+    if (routePath && routePath.length >= 2 && routePath.every(coord => areValidCoords(coord as [number, number]))) {
+      const routeGeometry = new LineString(routePath.map(coord => fromLonLat([coord[1], coord[0]])));
+      routeFeature = new Feature({
+        geometry: routeGeometry,
+        name: routeMode === 'air' ? 'Air Route' : 'Road Route',
+        type: 'route',
+        details: `Distance: ${distanceKm.toFixed(2)} km\nTravel Time: ${travelTimeFormatted}\nFuel: ${fuelConsumptionTons.toFixed(2)} tons`,
+      });
+      routeFeature.setStyle(
+        new Style({
+          stroke: new Stroke({
+            color: routeMode === 'air' ? '#FF5555' : '#1E90FF',
+            width: 3,
+            lineDash: routeMode === 'air' ? [5, 10] : undefined,
+          }),
+        })
+      );
+      features.push(routeFeature);
+    }
+
     const vectorSource = new VectorSource({
-      features: [homeFeature, awayFeature, routeFeature],
+      features,
     });
+
     const vectorLayer = new VectorLayer({
       source: vectorSource,
     });
+    vectorLayerRef.current = vectorLayer;
+
+    const tileLayer = new TileLayer({
+      source: getTileSource(),
+      preload: Infinity,
+    });
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setTarget(undefined);
+    }
+
     const map = new Map({
-      target: mapRef.current,
-      layers: [
-        new TileLayer({
-          source: new XYZ({
-            url: `https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey=${GEOAPIFY_API_KEY}`,
-          }),
-        }),
-        vectorLayer,
-      ],
+      target: mapTargetId,
+      layers: [tileLayer, vectorLayer],
       view: new View({
         center: homeCoords,
         zoom: 5,
+        minZoom: 3,
+        maxZoom: 19,
+        constrainResolution: true,
       }),
+      controls: [],
     });
+
+    mapInstanceRef.current = map;
+
     const extent = vectorSource.getExtent();
-    map.getView().fit(extent, { padding: [50, 50, 50, 50] });
-    return () => map.setTarget(undefined);
-  }, [isMounted, homeAirportCoords, awayAirportCoords, routePath, homeAirport, awayAirport, GEOAPIFY_API_KEY]);
-  if (!isMounted) {
-    return <div className="text-gray-300">Loading map...</div>;
+    if (extent.every(coord => isFinite(coord))) {
+      map.getView().fit(extent, { padding: [50, 50, 50, 50], duration: 1000 });
+    } else {
+      map.getView().setCenter([0, 0]);
+      map.getView().setZoom(2);
+    }
+
+    const tooltip = tooltipRef.current;
+    map.on('pointermove', (evt) => {
+      if (!tooltip) return;
+      const pixel = map.getEventPixel(evt.originalEvent);
+      const feature = map.forEachFeatureAtPixel(pixel, (feat) => feat);
+      tooltip.style.display = 'none'; // Reset display
+      if (feature) {
+        tooltip.style.left = `${evt.originalEvent.pageX + 10}px`;
+        tooltip.style.top = `${evt.originalEvent.pageY - 10}px`;
+        tooltip.style.display = 'block';
+        if (feature.get('type') === 'route') {
+          tooltip.innerHTML = `<strong>${feature.get('name')}</strong><br/>${feature.get('details').replace('\n', '<br/>')}`;
+        } else if (feature.get('type') === 'airport') {
+          tooltip.innerHTML = `<strong>${feature.get('name')}</strong><br/>${feature.get('details') || ''}`;
+        }
+      }
+    });
+
+    map.on('rendercomplete', () => {
+      map.renderSync();
+    });
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setTarget(undefined);
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [homeAirportCoords, awayAirportCoords, routePath, homeAirport, awayAirport, routeMode, mapId]);
+
+  const handleZoomIn = () => {
+    if (mapInstanceRef.current) {
+      const view = mapInstanceRef.current.getView();
+      view.animate({ zoom: view.getZoom()! + 1, duration: 250 });
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapInstanceRef.current) {
+      const view = mapInstanceRef.current.getView();
+      view.animate({ zoom: view.getZoom()! - 1, duration: 250 });
+    }
+  };
+
+  // Calculate route information for the info box
+  const airDistanceKm = getDistance(
+    [homeAirportCoords[1], homeAirportCoords[0]],
+    [awayAirportCoords[1], awayAirportCoords[0]]
+  ) / 1000;
+
+  let roadDistanceKm = airDistanceKm;
+  if (routeMode === 'road' && routePath && routePath.length >= 2) {
+    roadDistanceKm = 0;
+    for (let i = 1; i < routePath.length; i++) {
+      const prev = routePath[i - 1];
+      const curr = routePath[i];
+      roadDistanceKm += getDistance(
+        [prev[1], prev[0]],
+        [curr[1], curr[0]]
+      ) / 1000;
+    }
   }
-  return <div ref={mapRef} className="h-full w-full" />;
+
+  const distanceKm = routeMode === 'air' ? airDistanceKm : roadDistanceKm;
+  const airTravelTimeHours = airDistanceKm / 800;
+  const roadTravelTimeHours = roadDistanceKm / 80;
+  const travelTimeHours = routeMode === 'air' ? airTravelTimeHours : roadTravelTimeHours;
+  const travelTimeFormatted = `${Math.floor(travelTimeHours)}h ${Math.round((travelTimeHours % 1) * 60)}m`;
+  const airFuelConsumptionTons = airDistanceKm * 0.1;
+  const roadFuelConsumptionTons = roadDistanceKm * 0.01;
+  const fuelConsumptionTons = routeMode === 'air' ? airFuelConsumptionTons : roadFuelConsumptionTons;
+
+  return (
+    <div className="relative h-full w-full shadow-lg border border-gray-200 rounded-lg">
+      <div ref={mapRef} className="h-full w-full" style={{ minHeight: '400px' }} />
+      <div className="absolute top-2 right-2 flex flex-col gap-2">
+        <button
+          onClick={handleZoomIn}
+          className="p-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-all shadow-lg"
+          title="Zoom In"
+        >
+          <Plus size={16} />
+        </button>
+        <button
+          onClick={handleZoomOut}
+          className="p-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-all shadow-lg"
+          title="Zoom Out"
+        >
+          <Minus size={16} />
+        </button>
+        <button
+          onClick={() => setIsInfoBoxVisible(!isInfoBoxVisible)}
+          className="p-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-all shadow-lg"
+          title={isInfoBoxVisible ? "Hide Route Info" : "Show Route Info"}
+        >
+          <Info size={16} />
+        </button>
+      </div>
+      <div className="absolute top-2 left-2 flex gap-2">
+        <button
+          onClick={() => setRouteMode('air')}
+          className={`p-2 rounded-lg flex items-center gap-1 transition-all shadow-lg ${routeMode === 'air' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
+            } hover:bg-emerald-700 hover:text-white`}
+          title="Switch to Air Route"
+        >
+          <Plane size={16} /> Air Route
+        </button>
+        <button
+          onClick={() => setRouteMode('road')}
+          className={`p-2 rounded-lg flex items-center gap-1 transition-all shadow-lg ${routeMode === 'road' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
+            } hover:bg-emerald-700 hover:text-white`}
+          title="Switch to Road Route"
+        >
+          <Car size={16} /> Road Route
+        </button>
+      </div>
+      {isInfoBoxVisible && (
+        <div className="absolute bottom-2 left-2 right-2 bg-gray-800 bg-opacity-80 text-white p-3 rounded-lg shadow-lg z-10 text-sm">
+          <div className="flex flex-col gap-1">
+            <span><strong>Route Type:</strong> {routeMode === 'air' ? 'Air' : 'Road'}</span>
+            <span><strong>Distance:</strong> {distanceKm.toFixed(2)} km</span>
+            <span><strong>Travel Time:</strong> {travelTimeFormatted}</span>
+            <span><strong>Est. Fuel Consumption:</strong> {fuelConsumptionTons.toFixed(2)} tons</span>
+            <span><strong>Home Airport:</strong> {homeAirport.name} ({homeAirport.iata_code || 'N/A'})</span>
+            <span><strong>Away Airport:</strong> {awayAirport.name} ({awayAirport.iata_code || 'N/A'})</span>
+          </div>
+        </div>
+      )}
+      <div
+        ref={tooltipRef}
+        className="absolute bg-gray-800 text-white p-2 rounded-lg shadow-lg pointer-events-none z-10 text-sm"
+        style={{ display: 'none' }}
+      />
+    </div>
+  );
 };
+
 export default MapWrapper;
