@@ -13,7 +13,7 @@ import LineString from 'ol/geom/LineString';
 import { Icon, Style, Text, Stroke, Fill } from 'ol/style';
 import { fromLonLat } from 'ol/proj';
 import { getDistance } from 'ol/sphere';
-import { Plus, Minus, Plane, Car, Info } from 'lucide-react';
+import { Plus, Minus, Plane, Car, Info, Globe, Map as MapIcon, CarFront } from 'lucide-react';
 
 interface MapWrapperProps {
   homeAirportCoords: [number, number];
@@ -21,10 +21,12 @@ interface MapWrapperProps {
   routePath: [number, number][];
   homeAirport: { id: string; name: string; latitude: number; longitude: number; iata_code?: string };
   awayAirport: { id: string; name: string; latitude: number; longitude: number; iata_code?: string };
+  matchDetails?: { homeTeam: string; awayTeam: string; date: string; country: string } | null;
   GEOAPIFY_API_KEY: string;
   routeMode: 'air' | 'road';
   setRouteMode: (mode: 'air' | 'road') => void;
   mapId?: string;
+  isLoading?: boolean;
 }
 
 const MapWrapper: React.FC<MapWrapperProps> = ({
@@ -33,16 +35,20 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
   routePath,
   homeAirport,
   awayAirport,
+  matchDetails,
   GEOAPIFY_API_KEY,
   routeMode,
   setRouteMode,
   mapId = 'default-map',
+  isLoading = false,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const tileLayerRef = useRef<TileLayer<XYZ> | null>(null);
   const [isInfoBoxVisible, setIsInfoBoxVisible] = useState(false);
+  const [mapStyle, setMapStyle] = useState<'default' | 'satellite'>('default');
 
   const areValidCoords = (coords: [number, number] | null): boolean => {
     return (
@@ -58,9 +64,17 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
   };
 
   const getTileSource = () => {
+    if (mapStyle === 'satellite') {
+      return new XYZ({
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attributions: '© Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        tileSize: 256,
+        maxZoom: 19,
+      });
+    }
     return new XYZ({
-      url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      attributions: '© OpenStreetMap contributors',
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+      attributions: '© Esri, HERE, Garmin, USGS, Intermap, INCREMENT P, NRCan, Esri Japan, METI, Esri China (Hong Kong), Esri Korea, Esri (Thailand), NGCC, (c) OpenStreetMap contributors, and the GIS User Community',
       tileSize: 256,
       maxZoom: 19,
     });
@@ -100,13 +114,11 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
 
     const distanceKm = routeMode === 'air' ? airDistanceKm : roadDistanceKm;
 
-    // Estimate travel time (average speed: air ~800 km/h, road ~80 km/h)
     const airTravelTimeHours = airDistanceKm / 800;
     const roadTravelTimeHours = roadDistanceKm / 80;
     const travelTimeHours = routeMode === 'air' ? airTravelTimeHours : roadTravelTimeHours;
     const travelTimeFormatted = `${Math.floor(travelTimeHours)}h ${Math.round((travelTimeHours % 1) * 60)}m`;
 
-    // Estimate fuel consumption (mock data: air ~0.1 tons/km, road ~0.01 tons/km)
     const airFuelConsumptionTons = airDistanceKm * 0.1;
     const roadFuelConsumptionTons = roadDistanceKm * 0.01;
     const fuelConsumptionTons = routeMode === 'air' ? airFuelConsumptionTons : roadFuelConsumptionTons;
@@ -120,9 +132,11 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
     homeFeature.setStyle(
       new Style({
         image: new Icon({
-          src: 'https://img.icons8.com/color/48/000000/airplane-take-off.png',
+          src: routeMode === 'air'
+            ? 'https://img.icons8.com/color/48/000000/airplane-take-off.png'
+            : 'https://img.icons8.com/color/48/000000/car.png',
           scale: 0.5,
-          color: '#1E90FF', // Blue for home
+          color: '#1E90FF',
         }),
         text: new Text({
           text: `Home: ${homeAirport.name}`,
@@ -143,9 +157,11 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
     awayFeature.setStyle(
       new Style({
         image: new Icon({
-          src: 'https://img.icons8.com/color/48/000000/airplane-take-off.png',
+          src: routeMode === 'air'
+            ? 'https://img.icons8.com/color/48/000000/airplane-take-off.png'
+            : 'https://img.icons8.com/color/48/000000/car.png',
           scale: 0.5,
-          color: '#FF5555', // Red for away
+          color: '#FF5555',
         }),
         text: new Text({
           text: `Away: ${awayAirport.name}`,
@@ -193,6 +209,7 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
       source: getTileSource(),
       preload: Infinity,
     });
+    tileLayerRef.current = tileLayer;
 
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setTarget(undefined);
@@ -226,7 +243,7 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
       if (!tooltip) return;
       const pixel = map.getEventPixel(evt.originalEvent);
       const feature = map.forEachFeatureAtPixel(pixel, (feat) => feat);
-      tooltip.style.display = 'none'; // Reset display
+      tooltip.style.display = 'none';
       if (feature) {
         tooltip.style.left = `${evt.originalEvent.pageX + 10}px`;
         tooltip.style.top = `${evt.originalEvent.pageY - 10}px`;
@@ -251,6 +268,50 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
     };
   }, [homeAirportCoords, awayAirportCoords, routePath, homeAirport, awayAirport, routeMode, mapId]);
 
+  // Update features when routeMode changes to reflect icon changes
+  useEffect(() => {
+    if (vectorLayerRef.current) {
+      const vectorSource = vectorLayerRef.current.getSource();
+      if (vectorSource) {
+        const features = vectorSource.getFeatures();
+        features.forEach((feature) => {
+          if (feature.get('type') === 'airport') {
+            const isHome = feature.get('name').includes('Home');
+            feature.setStyle(
+              new Style({
+                image: new Icon({
+                  src: routeMode === 'air'
+                    ? 'https://img.icons8.com/color/48/000000/airplane-take-off.png'
+                    : 'https://img.icons8.com/color/48/000000/car.png',
+                  scale: 0.5,
+                  color: isHome ? '#1E90FF' : '#FF5555',
+                }),
+                text: new Text({
+                  text: feature.get('name'),
+                  offsetY: -25,
+                  fill: new Fill({ color: '#000' }),
+                  backgroundFill: new Fill({ color: 'rgba(255, 255, 255, 0.7)' }),
+                  padding: [2, 2, 2, 2],
+                }),
+              })
+            );
+          }
+        });
+      }
+    }
+  }, [routeMode]);
+
+  // Update tile source when mapStyle changes
+  useEffect(() => {
+    if (tileLayerRef.current && mapInstanceRef.current) {
+      const newSource = getTileSource();
+      tileLayerRef.current.setSource(newSource);
+      newSource.once('tileloadend', () => {
+        if (mapInstanceRef.current) mapInstanceRef.current.renderSync();
+      });
+    }
+  }, [mapStyle]);
+
   const handleZoomIn = () => {
     if (mapInstanceRef.current) {
       const view = mapInstanceRef.current.getView();
@@ -265,7 +326,6 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
     }
   };
 
-  // Calculate route information for the info box
   const airDistanceKm = getDistance(
     [homeAirportCoords[1], homeAirportCoords[0]],
     [awayAirportCoords[1], awayAirportCoords[0]]
@@ -295,51 +355,83 @@ const MapWrapper: React.FC<MapWrapperProps> = ({
 
   return (
     <div className="relative h-full w-full shadow-lg border border-gray-200 rounded-lg">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-emerald-500 border-solid"></div>
+        </div>
+      )}
       <div ref={mapRef} className="h-full w-full" style={{ minHeight: '400px' }} />
       <div className="absolute top-2 right-2 flex flex-col gap-2">
         <button
           onClick={handleZoomIn}
-          className="p-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-all shadow-lg"
+          className="p-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-all shadow-lg z-20"
           title="Zoom In"
         >
           <Plus size={16} />
         </button>
         <button
           onClick={handleZoomOut}
-          className="p-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-all shadow-lg"
+          className="p-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-all shadow-lg z-20"
           title="Zoom Out"
         >
           <Minus size={16} />
         </button>
         <button
           onClick={() => setIsInfoBoxVisible(!isInfoBoxVisible)}
-          className="p-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-all shadow-lg"
+          className="p-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-all shadow-lg z-20"
           title={isInfoBoxVisible ? "Hide Route Info" : "Show Route Info"}
         >
           <Info size={16} />
         </button>
       </div>
-      <div className="absolute top-2 left-2 flex gap-2">
-        <button
-          onClick={() => setRouteMode('air')}
-          className={`p-2 rounded-lg flex items-center gap-1 transition-all shadow-lg ${routeMode === 'air' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
-            } hover:bg-emerald-700 hover:text-white`}
-          title="Switch to Air Route"
-        >
-          <Plane size={16} /> Air Route
-        </button>
-        <button
-          onClick={() => setRouteMode('road')}
-          className={`p-2 rounded-lg flex items-center gap-1 transition-all shadow-lg ${routeMode === 'road' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
-            } hover:bg-emerald-700 hover:text-white`}
-          title="Switch to Road Route"
-        >
-          <Car size={16} /> Road Route
-        </button>
+      <div className="absolute top-2 left-2 flex flex-col gap-2">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setRouteMode('air')}
+            className={`p-2 rounded-lg flex items-center gap-1 transition-all shadow-lg ${routeMode === 'air' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
+              } hover:bg-emerald-700 hover:text-white`}
+            title="Switch to Air Route"
+          >
+            <Plane size={16} /> Air
+          </button>
+          <button
+            onClick={() => setRouteMode('road')}
+            className={`p-2 rounded-lg flex items-center gap-1 transition-all shadow-lg ${routeMode === 'road' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
+              } hover:bg-emerald-700 hover:text-white`}
+            title="Switch to Road Route"
+          >
+            <CarFront size={16} /> Road
+          </button>
+        </div>
+        <div className="gap-2">
+          <button
+            onClick={() => setMapStyle('default')}
+            className={`p-2 rounded-lg transition-all shadow-lg block my-2 ${mapStyle === 'default' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
+              } hover:bg-emerald-700 hover:text-white`}
+            title="Default Map View"
+          >
+            <MapIcon size={16} />
+          </button>
+          <button
+            onClick={() => setMapStyle('satellite')}
+            className={`p-2 rounded-lg transition-all shadow-lg block my-2 ${mapStyle === 'satellite' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
+              } hover:bg-emerald-700 hover:text-white`}
+            title="Satellite Map View"
+          >
+            <Globe size={16} />
+          </button>
+        </div>
       </div>
       {isInfoBoxVisible && (
         <div className="absolute bottom-2 left-2 right-2 bg-gray-800 bg-opacity-80 text-white p-3 rounded-lg shadow-lg z-10 text-sm">
           <div className="flex flex-col gap-1">
+            {matchDetails && (
+              <>
+                <span><strong>Match:</strong> {matchDetails.homeTeam} vs {matchDetails.awayTeam}</span>
+                <span><strong>Date:</strong> {new Date(matchDetails.date).toLocaleDateString()}</span>
+                <span><strong>Country:</strong> {matchDetails.country}</span>
+              </>
+            )}
             <span><strong>Route Type:</strong> {routeMode === 'air' ? 'Air' : 'Road'}</span>
             <span><strong>Distance:</strong> {distanceKm.toFixed(2)} km</span>
             <span><strong>Travel Time:</strong> {travelTimeFormatted}</span>

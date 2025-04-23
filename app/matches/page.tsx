@@ -42,12 +42,12 @@ export default function MatchesPage() {
       .from("seasons")
       .select("*")
       .order("season_id", { ascending: false })
-    
+
     if (error) {
       console.error("Error fetching seasons:", error)
       return
     }
-    
+
     if (data && data.length > 0) {
       setSeasons(data)
       // Automatically select the most recent season (which should be the first in the list)
@@ -91,7 +91,7 @@ export default function MatchesPage() {
     }
 
     const { count, error } = await countQuery
-    
+
     if (error) {
       console.error("Error counting matches:", error)
     } else if (count !== null) {
@@ -101,12 +101,12 @@ export default function MatchesPage() {
 
   const fetchMatches = useCallback(async () => {
     if (!selectedSeason) return; // Ensure season is selected
-    
+
     setIsLoading(true)
-    
+
     // First get count for pagination
     await fetchMatchesCount()
-    
+
     // Then fetch the actual matches for current page
     let matchesQuery = supabase
       .from("matches")
@@ -139,12 +139,12 @@ export default function MatchesPage() {
 
     // Apply pagination
     matchesQuery = matchesQuery.range(
-      (page - 1) * matchesPerPage, 
+      (page - 1) * matchesPerPage,
       page * matchesPerPage - 1
     )
 
     const { data: matchesData, error: matchesError } = await matchesQuery
-    
+
     if (matchesError) {
       console.error("Error fetching matches:", matchesError)
       setIsLoading(false)
@@ -156,7 +156,7 @@ export default function MatchesPage() {
     } else {
       setMatches([])
     }
-    
+
     setIsLoading(false)
   }, [selectedLeague, sortDirection, page, debouncedSearchQuery, fetchMatchesCount, selectedSeason])
 
@@ -207,7 +207,7 @@ export default function MatchesPage() {
     if (match.league_seasons?.leagues?.name) {
       return match.league_seasons.leagues.name;
     }
-    
+
     const league = leagues.find(l => l.league_id === match.league_id);
     return league?.name || "Unknown League";
   }
@@ -217,6 +217,12 @@ export default function MatchesPage() {
     const season = seasons.find(s => s.season_id === selectedSeason);
     return season?.season_id || "Select Season";
   }
+  const handleMatchClick = (matchId: any) => {
+    // Store match_id in localStorage
+    localStorage.setItem('MatchId', matchId);
+    // Navigate to emissions page
+    router.push(`/emissions?match=${matchId}`);
+  };
 
   return (
     <div className="bg-gradient-to-b from-gray-900 to-gray-950 min-h-screen">
@@ -246,7 +252,7 @@ export default function MatchesPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gray-800/40 backdrop-blur-sm border-gray-700 hover:border-emerald-600/50 transition-all duration-300 shadow-lg hover:shadow-emerald-700/10">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
@@ -260,7 +266,7 @@ export default function MatchesPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gray-800/40 backdrop-blur-sm border-gray-700 hover:border-emerald-600/50 transition-all duration-300 shadow-lg hover:shadow-emerald-700/10">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
@@ -274,7 +280,7 @@ export default function MatchesPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gray-800/40 backdrop-blur-sm border-gray-700 hover:border-emerald-600/50 transition-all duration-300 shadow-lg hover:shadow-emerald-700/10">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
@@ -310,7 +316,7 @@ export default function MatchesPage() {
                   </div>
                 )}
               </div>
-              
+
               {/* Season and League Filters */}
               <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                 {/* Season Selector */}
@@ -320,8 +326,8 @@ export default function MatchesPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-gray-800 border-gray-700">
                     {seasons.map((season) => (
-                      <SelectItem 
-                        key={season.season_id} 
+                      <SelectItem
+                        key={season.season_id}
                         value={season.season_id}
                         className="text-gray-200 focus:bg-emerald-800/30 focus:text-white"
                       >
@@ -330,7 +336,7 @@ export default function MatchesPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                
+
                 {/* League Selector */}
                 <Select value={selectedLeague} onValueChange={setSelectedLeague}>
                   <SelectTrigger className="w-full sm:w-[220px] border-gray-700 bg-gray-800/70 hover:bg-gray-800 text-gray-200">
@@ -339,8 +345,8 @@ export default function MatchesPage() {
                   <SelectContent className="bg-gray-800 border-gray-700">
                     <SelectItem value="all" className="text-gray-200 focus:bg-emerald-800/30 focus:text-white">All Leagues</SelectItem>
                     {leagues.map((league) => (
-                      <SelectItem 
-                        key={league.league_id} 
+                      <SelectItem
+                        key={league.league_id}
                         value={league.league_id}
                         className="text-gray-200 focus:bg-emerald-800/30 focus:text-white"
                       >
@@ -349,12 +355,12 @@ export default function MatchesPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                
+
                 {/* Sort Direction */}
-                <Button 
-                  variant="outline" 
-                  size="default" 
-                  onClick={toggleSort} 
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={toggleSort}
                   className="flex items-center gap-2 border-gray-700 bg-gray-800/70 hover:bg-gray-800 text-gray-200 hover:text-emerald-400 hover:border-emerald-500"
                 >
                   {sortDirection === "asc" ? "Oldest First" : "Newest First"}
@@ -412,7 +418,7 @@ export default function MatchesPage() {
                     <div
                       key={match.match_id}
                       className="group flex justify-between items-center hover:bg-emerald-900/20 transition-colors p-6 cursor-pointer"
-                      onClick={() => router.push(`/emissions?match=${match.match_id}`)}
+                      onClick={() => handleMatchClick(match.match_id)}
                     >
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                         <div className="md:col-span-5 grid grid-cols-5 items-center">
@@ -424,14 +430,14 @@ export default function MatchesPage() {
                               <MapPin className="h-3 w-3 ml-1" />
                             </div>
                           </div>
-                          
+
                           {/* VS Badge - 1/5 width */}
                           <div className="col-span-1 flex justify-center">
                             <div className="w-10 h-6 bg-gray-800 rounded-full text-gray-300 font-medium text-sm flex items-center justify-center">
                               vs
                             </div>
                           </div>
-                          
+
                           {/* Away Team - 2/5 width */}
                           <div className="col-span-2 text-left pl-2">
                             <div className="font-medium text-white text-lg">{match.away_team}</div>
@@ -441,7 +447,7 @@ export default function MatchesPage() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="md:col-span-4 flex flex-col items-center md:border-l md:border-r border-gray-800 px-4">
                           <span className="text-base text-white font-medium">
                             {new Date(match.date).toLocaleDateString(undefined, {
@@ -457,7 +463,7 @@ export default function MatchesPage() {
                             })}
                           </span>
                         </div>
-                        
+
                         <div className="md:col-span-3 flex justify-end items-center">
                           <div className="flex items-center px-3 py-1 bg-emerald-900/30 rounded-full">
                             <Trophy className="h-4 w-4 text-emerald-400 mr-2" />
@@ -473,15 +479,15 @@ export default function MatchesPage() {
                   <div className="p-16 text-center">
                     <Trophy className="h-16 w-16 mx-auto text-emerald-700/50 mb-6" />
                     <p className="text-gray-300 text-xl font-medium mb-2">
-                      {debouncedSearchQuery 
-                        ? "No matches found for your search query" 
+                      {debouncedSearchQuery
+                        ? "No matches found for your search query"
                         : "No matches found for the selected league and season"}
                     </p>
                     <p className="text-gray-500 max-w-md mx-auto mb-6">
                       Try adjusting your filters or search terms to find the matches you're looking for
                     </p>
                     {debouncedSearchQuery && (
-                      <Button 
+                      <Button
                         onClick={() => setSearchQuery("")}
                         className="mt-2 bg-emerald-700 hover:bg-emerald-800 text-white"
                       >
@@ -502,16 +508,16 @@ export default function MatchesPage() {
               Page {page} of {totalPages}
             </div>
             <div className="flex space-x-4">
-              <Button 
-                onClick={handlePreviousPage} 
+              <Button
+                onClick={handlePreviousPage}
                 disabled={page === 1}
                 variant="outline"
                 className="flex items-center border-gray-700 bg-gray-800/50 hover:bg-gray-800 text-emerald-400 hover:text-emerald-300 disabled:opacity-50 disabled:text-gray-600"
               >
                 <ChevronLeft className="h-4 w-4 mr-2" /> Previous
               </Button>
-              <Button 
-                onClick={handleNextPage} 
+              <Button
+                onClick={handleNextPage}
                 disabled={page === totalPages}
                 className="flex items-center bg-emerald-800 hover:bg-emerald-700 text-white border-none disabled:opacity-50 disabled:bg-gray-800"
               >
