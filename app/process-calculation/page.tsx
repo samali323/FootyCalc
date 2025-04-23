@@ -20,7 +20,8 @@ import {
   Download,
   Trophy,
   CalendarDays,
-  Medal
+  Medal,
+  MapPinned
 } from 'lucide-react';
 import { supabase } from "@/lib/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -72,6 +73,14 @@ const EmissionsCalculationProcess = () => {
 
   // Geoapify API Key
   const GEOAPIFY_API_KEY = 'd26da08a31474ffb85e3375fa257b302';
+
+  // At the top of the component, add this useEffect to fetch matchId from localStorage on mount
+  useEffect(() => {
+    const storedMatchId = localStorage.getItem('MatchId');
+    if (storedMatchId) {
+      setSelectedMatch(storedMatchId);
+    }
+  }, []);
 
   // Aircraft cruising speeds in km/h (from your original code)
   const aircraftCruisingSpeeds = {
@@ -1372,27 +1381,6 @@ Generated on ${new Date().toISOString().split('T')[0]}
   };
 
   // Function to fetch route between two coordinates
-  const fetchRouteroad = async (startCoords, endCoords) => {
-    try {
-      console.log('Fetching route with waypoints:', startCoords, endCoords);
-      const response = await fetch(
-        `https://api.geoapify.com/v1/routing?waypoints=${startCoords.join(',')}|${endCoords.join(',')}&mode=drive&apiKey=${GEOAPIFY_API_KEY}`
-      );
-      const data = await response.json();
-      console.log('Route API response:', data);
-      if (data.features && data.features.length > 0) {
-        const coordinates = data.features[0].geometry.coordinates[0].map(coord => [coord[1], coord[0]]);
-        setRoutePath(coordinates);
-      } else {
-        console.log('No route found, resetting routePath');
-        setRoutePath([]);
-      }
-    } catch (error) {
-      console.error('Error fetching route:', error);
-      setRoutePath([]);
-    }
-  };
-
   const fetchRoute = async (startCoords: number[], endCoords: number[]) => {
     try {
       console.log('Fetching route with waypoints:', startCoords, endCoords);
@@ -1424,6 +1412,8 @@ Generated on ${new Date().toISOString().split('T')[0]}
   const areValidCoords = (coords) => {
     return Array.isArray(coords) && coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1]);
   };
+
+  const selectedMatchData = matches.find(match => match.match_id === selectedMatch);
 
   // Update map when airports are selected
   useEffect(() => {
@@ -1495,6 +1485,82 @@ Generated on ${new Date().toISOString().split('T')[0]}
       setAwayAirport(null);
     }
   }, [selectedMatch]);
+
+  // Replace the existing useEffect for fetching matchId with this updated version to ensure match, league, and season are all pre-selected
+  useEffect(() => {
+    const storedMatchId = localStorage.getItem('MatchId');
+    if (storedMatchId) {
+      const fetchMatchDetails = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('matches')
+            .select(`
+              *,
+              league_seasons!inner (
+                league_id,
+                season_id,
+                leagues (
+                  name
+                )
+              )
+            `)
+            .eq('match_id', storedMatchId)
+            .single();
+
+          if (error) {
+            console.error('Error fetching match details:', error);
+            return;
+          }
+
+          if (data) {
+            const leagueId = data.league_seasons?.league_id;
+            const seasonId = data.league_seasons?.season_id;
+
+            // Set league and season first
+            if (leagueId) setSelectedLeague(leagueId);
+            if (seasonId) setSelectedSeason(seasonId);
+          }
+        } catch (error) {
+          console.error('Error fetching match details:', error);
+        }
+      };
+
+      fetchMatchDetails();
+    }
+  }, []);
+
+  // Ensure fetchMatches runs after league and season are set to populate the matches dropdown
+  useEffect(() => {
+    if (seasons.length > 0 && selectedSeason) {
+      fetchMatches().then(() => {
+        const storedMatchId = localStorage.getItem('MatchId');
+        if (storedMatchId) {
+          // Check if the match exists in the fetched matches
+          const matchExists = matches.some(match => match.match_id === storedMatchId);
+          if (matchExists) {
+            setSelectedMatch(storedMatchId);
+          } else {
+            console.warn('Stored matchId not found in fetched matches:', storedMatchId);
+          }
+        }
+      });
+    }
+  }, [selectedLeague, selectedSeason, sortDirection, matches]); // Add matches as a dependency to re-check after fetching
+
+  // Add this useEffect to clear localStorage when homeAirport or awayAirport changes in Airports tab
+  // useEffect(() => {
+  //   if (activeTab === 'airports' && (homeAirport || awayAirport)) {
+  //     localStorage.removeItem('MatchId');
+  //   }
+  // }, [homeAirport, awayAirport, activeTab]);
+
+  // Add a handler to clear localStorage when a new match is selected in Matches tab
+  const handleMatchSelection = (matchId) => {
+    setSelectedMatch(matchId);
+    if (matchId !== localStorage.getItem('MatchId')) {
+      localStorage.setItem('MatchId', matchId);
+    }
+  };
 
   // Main render function based on active tab
   const renderContent = () => {
@@ -1569,7 +1635,8 @@ Generated on ${new Date().toISOString().split('T')[0]}
         <select
           className={`w-full p-3 bg-gray-800 border rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500 border-gray-700`}
           value={selectedMatch}
-          onChange={(e) => setSelectedMatch(e.target.value)}
+          // onChange={(e) => setSelectedMatch(e.target.value)}
+          onChange={(e) => handleMatchSelection(e.target.value)}
         >
           <option value="">Select a Match (Total {matchCount})</option>
           {matches.map(match => (
@@ -1607,54 +1674,6 @@ Generated on ${new Date().toISOString().split('T')[0]}
           readOnly
         />
       </div>
-
-      {/* Map Section */}
-      {/* {selectedMatch && (
-        <div className="space-y-2">
-          {(() => {
-            console.log('Map rendering condition:', {
-              homeAirportCoords,
-              awayAirportCoords,
-              routePath,
-              homeAirport,
-              awayAirport,
-            });
-            if (homeAirportCoords && awayAirportCoords && routePath && homeAirport && awayAirport) {
-              console.log('Rendering map with data (Successfully)');
-              return (
-                <ErrorBoundary>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-300 flex items-center">
-                      <span>
-                        Route Map: {awayAirport.name} to {homeAirport.name}
-                      </span>
-                    </label>
-                    <div className="h-64 w-full rounded-lg overflow-hidden">
-                      <MapWrapper
-                        homeAirportCoords={homeAirportCoords}
-                        awayAirportCoords={awayAirportCoords}
-                        routePath={routePath}
-                        homeAirport={homeAirport}
-                        awayAirport={awayAirport}
-                        GEOAPIFY_API_KEY={GEOAPIFY_API_KEY}
-                      />
-                    </div>
-                  </div>
-                </ErrorBoundary>
-              );
-            } else {
-              console.log('Map not rendering due to missing data');
-              return (
-                <div className="text-gray-300">
-                  {homeAirport && awayAirport
-                    ? 'Loading map...'
-                    : 'Please ensure airports or coordinates are available for the selected match.'}
-                </div>
-              );
-            }
-          })()}
-        </div>
-      )} */}
 
       {/* Passengers */}
       <div className="space-y-2">
@@ -1749,7 +1768,11 @@ Generated on ${new Date().toISOString().split('T')[0]}
             'border-red-500' : 'border-gray-700'
             } rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500`}
           value={homeAirport?.id || ""}
-          onChange={(e) => setHomeAirport(airports.find(a => a.id === e.target.value) || null)}
+          // onChange={(e) => setHomeAirport(airports.find(a => a.id === e.target.value) || null)}
+          onChange={(e) => {
+            setHomeAirport(airports.find(a => a.id === e.target.value) || null);
+            localStorage.removeItem('MatchId'); // Clear matchId when airport changes
+          }}
         >
           <option value="">Select Home Airport</option>
           {airports.map(airport => (
@@ -1777,7 +1800,11 @@ Generated on ${new Date().toISOString().split('T')[0]}
             'border-red-500' : 'border-gray-700'
             } rounded-lg text-gray-200 focus:ring-emerald-500 focus:border-emerald-500`}
           value={awayAirport?.id || ""}
-          onChange={(e) => setAwayAirport(airports.find(a => a.id === e.target.value) || null)}
+          // onChange={(e) => setAwayAirport(airports.find(a => a.id === e.target.value) || null)}
+          onChange={(e) => {
+            setAwayAirport(airports.find(a => a.id === e.target.value) || null);
+            localStorage.removeItem('MatchId'); // Clear matchId when airport changes
+          }}
         >
           <option value="">Select Away Airport</option>
           {airports.map(airport => (
@@ -2014,10 +2041,11 @@ Generated on ${new Date().toISOString().split('T')[0]}
                     <ErrorBoundary>
                       <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                          <MapPinned className="h-5 w-5 text-emerald-500" />
                           <span className="bg-gradient-to-r from-emerald-500 to-teal-500 text-transparent bg-clip-text text-lg font-semibold">
                             Route Map: {awayAirport.name} to {homeAirport.name}
                           </span>
-                          <Plane className="h-5 w-5 text-emerald-500" />
+                          <Plane className="h-5 w-5 text-teal-500" />
                         </label>
                         <div className="h-80 w-full rounded-lg overflow-hidden shadow-lg">
                           <MapWrapper
@@ -2026,10 +2054,17 @@ Generated on ${new Date().toISOString().split('T')[0]}
                             routePath={routePath}
                             homeAirport={homeAirport}
                             awayAirport={awayAirport}
+                            matchDetails={selectedMatchData ? {
+                              homeTeam: selectedMatchData.home_team,
+                              awayTeam: selectedMatchData.away_team,
+                              date: selectedMatchData.date,
+                              country: selectedMatchData.country,
+                            } : null}
                             GEOAPIFY_API_KEY={GEOAPIFY_API_KEY}
                             routeMode={routeMode}
                             setRouteMode={setRouteMode}
-                            mapId="primary-map" // Unique ID for the first map
+                            mapId="primary-map"
+                            isLoading={isLoading}
                           />
                         </div>
                       </div>
