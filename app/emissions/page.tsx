@@ -135,7 +135,7 @@ export default function EmissionsPage() {
         matchData.away_airport,
         isRoundTrip
       );
-console.log('result',result);
+      console.log('result', result);
       setEmissionsResult(result);
 
       // Get additional flight statistics
@@ -143,7 +143,7 @@ console.log('result',result);
         result.distanceKm / (isRoundTrip ? 2 : 1), // One-way distance for stats
         isRoundTrip
       );
-      console.log('stats',stats);
+      console.log('stats', stats);
       setFlightStats(stats);
 
       // Update match emissions for compatibility with other components
@@ -215,7 +215,7 @@ console.log('result',result);
             .limit(5);
 
           if (error) throw error;
-          
+
           if (data && data.length > 0) {
             const { data: emissionsData } = await supabase
               .from("match_emissions")
@@ -277,9 +277,9 @@ console.log('result',result);
 
   const handleSaveEmissions = async () => {
     if (!matchId || !emissionsResult) return;
-    
+
     setIsSaving(true);
-    
+
     try {
       const emissionsData = {
         match_id: matchId,
@@ -289,14 +289,14 @@ console.log('result',result);
         round_trip: isRoundTrip,
         updated_at: new Date().toISOString()
       };
-      
+
       // Check if we already have emissions for this match
       const { data: existingData } = await supabase
         .from("match_emissions")
         .select("*")
         .eq("match_id", matchId)
         .maybeSingle();
-        
+
       if (existingData) {
         // Update existing record
         await supabase
@@ -309,10 +309,10 @@ console.log('result',result);
           .from("match_emissions")
           .insert(emissionsData);
       }
-      
+
       // Show success message or redirect
       alert("Emissions data saved successfully.");
-      
+
     } catch (error) {
       console.error("Error saving emissions data:", error);
       alert("Failed to save emissions data.");
@@ -457,17 +457,17 @@ console.log('result',result);
     <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Match Emissions Details</h1>
-        <Button 
-  asChild 
-  variant="outline" 
-  size="sm" 
-  className="gap-2 font-medium bg-emerald-900 hover:bg-emerald-800 text-white border-emerald-700 transition-colors rounded-md shadow-sm"
->
-  <Link href="/matches" className="flex items-center">
-    <ArrowLeft className="h-4 w-4" />
-    <span>Back to Matches</span>
-  </Link>
-</Button>
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="gap-2 font-medium bg-emerald-900 hover:bg-emerald-800 text-white border-emerald-700 transition-colors rounded-md shadow-sm"
+        >
+          <Link href="/matches" className="flex items-center">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Matches</span>
+          </Link>
+        </Button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 mb-6">
@@ -528,7 +528,7 @@ console.log('result',result);
                 <TabsTrigger value="benchmark">Benchmark Method</TabsTrigger>
                 <TabsTrigger value="standard">Standard Method</TabsTrigger>
               </TabsList>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/30 rounded-lg">
                   <div>
@@ -589,7 +589,7 @@ console.log('result',result);
                       <div className="flex justify-between py-2 font-semibold">
                         <span className="text-sm">Total CO₂ Emissions</span>
                         <span className="text-red-500 dark:text-red-400">
-                          {Math.round(emissionsResult.totalEmissions).toLocaleString()} tonnes
+                          {emissionsResult.totalEmissions.toFixed(2).toLocaleString()} tonnes
                         </span>
                       </div>
                     </div>
@@ -616,7 +616,7 @@ console.log('result',result);
                       <span className="text-sm font-medium">Team Size</span>
                       <span className="text-sm">{passengers} passengers</span>
                     </div>
-                    
+
                     <div className="flex justify-between py-2 font-semibold">
                       <span className="text-sm">Estimated CO₂</span>
                       <span className="text-sm">
@@ -627,7 +627,7 @@ console.log('result',result);
                 </TabsContent>
               </div>
             </Tabs>
-            
+
             {/* <Button 
               className="w-full mt-6" 
               onClick={handleSaveEmissions}
@@ -664,7 +664,7 @@ console.log('result',result);
           </div>
         </CardContent>
       </Card> */}
-        <FootballEmissionsEquivalencies emissionsInTonnes={matchData.match_emissions?.[0]?.emissions} />
+      <FootballEmissionsEquivalencies emissionsInTonnes={matchData.match_emissions?.[0]?.emissions} />
       <Card>
         <CardHeader>
           <CardTitle>Emissions Reduction Recommendations</CardTitle>
@@ -675,12 +675,12 @@ console.log('result',result);
               <h3 className="font-medium mb-2">Travel Schedule Optimization</h3>
               <p className="text-sm">Reorganize match schedules to minimize long-distance travel and combine away games in the same region.</p>
             </div>
-            
+
             <div className="p-4 border rounded-lg">
               <h3 className="font-medium mb-2">Alternative Transport Options</h3>
               <p className="text-sm">For distances under 500km, consider high-speed rail or electric coach transport where infrastructure allows.</p>
             </div>
-            
+
             <div className="p-4 border rounded-lg">
               <h3 className="font-medium mb-2">Carbon Offset Investment</h3>
               <p className="text-sm">Invest in verified carbon offset projects equivalent to the emissions calculated from team travel.</p>

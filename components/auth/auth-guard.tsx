@@ -9,9 +9,48 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-lg font-medium">Loading...</p>
+          <div className="loader"></div>
         </div>
+        <style jsx>{`
+          .loader {
+            width: 44.8px;
+            height: 44.8px;
+            color: #4ec9a5;
+            position: relative;
+            background: radial-gradient(11.2px, currentColor 94%, #0000);
+          }
+
+          .loader:before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: radial-gradient(10.08px at bottom right, #0000 94%, currentColor) top left,
+              radial-gradient(10.08px at bottom left, #0000 94%, currentColor) top right,
+              radial-gradient(10.08px at top right, #0000 94%, currentColor) bottom left,
+              radial-gradient(10.08px at top left, #0000 94%, currentColor) bottom right;
+            background-size: 22.4px 22.4px;
+            background-repeat: no-repeat;
+            animation: loader 1.5s infinite cubic-bezier(0.3, 1, 0, 1);
+          }
+
+          @keyframes loader {
+            33% {
+              inset: -11.2px;
+              transform: rotate(0deg);
+            }
+
+            66% {
+              inset: -11.2px;
+              transform: rotate(90deg);
+            }
+
+            100% {
+              inset: 0;
+              transform: rotate(90deg);
+            }
+          }
+        `}</style>
       </div>
     );
   }

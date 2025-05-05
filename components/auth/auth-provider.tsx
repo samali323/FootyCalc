@@ -5,18 +5,31 @@ import { supabase } from "@/lib/supabase";
 import { Session, User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 
+// Define profile data type based on your profiles table
+type Profile = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string; // e.g., "UserRole" or "admin"
+};
+
 type AuthContextType = {
   user: User | null;
   session: Session | null;
+  profile: Profile | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  setProfile: (profile: Profile | null) => void; // Function to update profile
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
+  profile: null,
   isLoading: true,
-  signOut: async () => {},
+  signOut: async () => { },
+  setProfile: () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -24,6 +37,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -32,7 +46,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const fetchSession = async () => {
       setIsLoading(true);
       try {
-        // Get session from Supabase
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
@@ -47,6 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           setSession(null);
           setUser(null);
+          setProfile(null);
           console.log("No active session found");
         }
       } catch (err) {
@@ -63,23 +77,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("Auth state changed:", event);
-        
-        if (event === 'SIGNED_IN') {
+
+        if (event === "SIGNED_IN") {
           console.log("User signed in:", newSession?.user?.email);
           setSession(newSession);
           setUser(newSession?.user ?? null);
-          router.refresh(); // Force Next.js to refetch data
-        } else if (event === 'SIGNED_OUT') {
+          router.refresh();
+        } else if (event === "SIGNED_OUT") {
           console.log("User signed out");
           setSession(null);
           setUser(null);
-          router.refresh(); // Force Next.js to refetch data
-        } else if (event === 'TOKEN_REFRESHED') {
+          setProfile(null);
+          router.push("/auth/login");
+          router.refresh();
+        } else if (event === "TOKEN_REFRESHED") {
           console.log("Token refreshed");
           setSession(newSession);
           setUser(newSession?.user ?? null);
         }
-        
+
         setIsLoading(false);
       }
     );
@@ -99,6 +115,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("Successfully signed out");
         setSession(null);
         setUser(null);
+        setProfile(null);
         router.push("/auth/login");
       }
     } catch (err) {
@@ -109,7 +126,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, isLoading, signOut, setProfile }}>
       {children}
     </AuthContext.Provider>
   );

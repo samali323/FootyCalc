@@ -1,959 +1,1065 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useMemo } from "react";
-import AuthGuard from "@/components/auth/auth-guard";
-import { useAuth } from "@/components/auth/auth-provider";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  Trophy, Users, Calendar, Search, PlusCircle,
-  Edit, Trash2, RefreshCw, CheckCircle, Clock, AlertTriangle,
-  Plane, CalendarRange, ArrowRight,
-  Database
-} from "lucide-react";
-import MatchesManagement from "@/components/matches-management";
-import TeamsManagement from "@/components/teams-management";
-import LeaguesManagement from "@/components/leagues-management";
-import AirportsManagement from "@/components/airports-management";
-import DashboardOverview from "@/components/dashboard-overview";
-import { supabase } from "@/lib/supabase/client";
-import SeasonsManagement from "@/components/seasons-management";
-import { format } from "date-fns";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import TeamSeasonsManagement from "@/components/teams-seasons-management";
-import DataManagement from "@/components/data-management";
+  Trophy, Users, Calendar, Plane, ArrowUp, ArrowDown,
+  PieChart, BarChart3, LineChart as LineChartIcon,
+  Calendar as CalendarIcon, MapPin, Settings, Info
+} from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { BarChart, LineChart } from "@/components/charts"
+import { supabase } from "@/lib/supabase/client"
+import type { Match, League, Airport, EmissionsResult } from "@/lib/types"
+import {
+  calculateTotalEmissions,
+  calculateEmissionsByTeam,
+  calculateEmissionsByLeague
+} from "@/lib/emissionsHelper"
 
-// Main Dashboard Page Component
-export default function Dashboard() {
-  const { user } = useAuth();
-  const router = useRouter();
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
+import { toast } from "sonner"
+import { CardDescription } from "@/components/ui/card-description"
 
-  // View state
-  const [activeTab, setActiveTab] = useState("overview");
-  const [viewMode, setViewMode] = useState("main"); // 'main' or 'teamSeasons'
-  const [selectedTeam, setSelectedTeam] = useState(null);
+// Import the calculation functions from the shared library
+import { calculateEmissionsBetweenAirports, getFlightStatistics } from "@/lib/icaoCalculations"
+import { Skeleton } from "@/components/ui/skeleton"
+// Skeleton loaders components
+const CardSkeleton = () => (
+  <Card>
+    <CardHeader className="pb-2">
+      <Skeleton className="h-5 w-1/3" />
+    </CardHeader>
+    <CardContent>
+      <Skeleton className="h-8 w-1/4 mb-2" />
+      <Skeleton className="h-4 w-1/2" />
+    </CardContent>
+  </Card>
+)
 
-  // State for data
+const ChartSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <Skeleton className="h-6 w-1/3 mb-2" />
+      <Skeleton className="h-4 w-1/2" />
+    </CardHeader>
+    <CardContent className="h-80">
+      <div className="flex items-center justify-center h-full">
+        <Skeleton className="h-full w-full rounded-md" />
+      </div>
+    </CardContent>
+  </Card>
+)
+
+const TableSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-6 w-1/4" />
+        <Skeleton className="h-10 w-[300px]" />
+      </div>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-2">
+        <div className="flex items-center space-x-4">
+          <Skeleton className="h-4 w-[15%]" />
+          <Skeleton className="h-4 w-[25%]" />
+          <Skeleton className="h-4 w-[15%]" />
+          <Skeleton className="h-4 w-[15%]" />
+          <Skeleton className="h-4 w-[15%]" />
+          <Skeleton className="h-4 w-[15%]" />
+        </div>
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center space-x-4">
+            <Skeleton className="h-8 w-[15%]" />
+            <Skeleton className="h-8 w-[25%]" />
+            <Skeleton className="h-8 w-[15%]" />
+            <Skeleton className="h-8 w-[15%]" />
+            <Skeleton className="h-8 w-[15%]" />
+            <Skeleton className="h-8 w-[15%]" />
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+)
+export default function Home() {
+  const [selectedLeague, setSelectedLeague] = useState<string>("all")
+  const [isRoundTrip, setIsRoundTrip] = useState(false)
+  const [passengers, setPassengers] = useState(35)
+  const [activeTab, setActiveTab] = useState<string>("overview")
+  const [dateRange, setDateRange] = useState({ from: new Date(), to: new Date() })
+  const [selectedSeason, setSelectedSeason] = useState<string | null>(null)
+  const [seasons, setSeasons] = useState<{ season_id: string }[]>([])
   const [stats, setStats] = useState({
     leagues: 0,
     teams: 0,
     matches: 0,
-    seasons: 0,
-    airports: 0,
-    upcomingMatches: 0
-  });
+    totalEmissions: 0,
+    emissionsChange: 0,
+    emissionsReduction: 0,
+    emissionsGoal: 5000,
+    progress: 0
+  })
+  const [matches, setMatches] = useState<Match[]>([])
+  const [leagues, setLeagues] = useState<League[]>([])
+  const [leagueNames, setLeagueNames] = useState<Record<string, string>>({})
+  const [airportsMap, setAirportsMap] = useState<Record<string, Airport>>({})
+  const [emissionsData, setEmissionsData] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true)
+  const [isMatchesLoading, setIsMatchesLoading] = useState<boolean>(true)
+  const [isChartLoading, setIsChartLoading] = useState<boolean>(true)
+  const [showSettings, setShowSettings] = useState<boolean>(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalMatches, setTotalMatches] = useState(0)
+  const [chartMatches, setChartMatches] = useState([])
 
-  const [leagues, setLeagues] = useState([]);
-  const [teams, setTeams] = useState([]);
-  const [matches, setMatches] = useState([]);
-  const [seasons, setSeasons] = useState([]);
-  const [airports, setAirports] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [dashboardLoading, setDashboardLoading] = useState(true);
-  const [loadingError, setLoadingError] = useState(null);
+  // Fetch all airports and create a map by team_id
+  const fetchAirports = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const { data: airportsData, error } = await supabase
+        .from("airports")
+        .select("*")
 
-  // Data collections for dropdowns
-  const [allTeams, setAllTeams] = useState([]);
-  const [allLeagues, setAllLeagues] = useState([]);
-  const [allSeasons, setAllSeasons] = useState([]);
-
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [totalItems, setTotalItems] = useState({
-    leagues: 0,
-    teams: 0,
-    matches: 0,
-    seasons: 0,
-    airports: 0
-  });
-
-  // Dashboard extra data
-  const [latestMatches, setLatestMatches] = useState([]);
-  const [upcomingMatches, setUpcomingMatches] = useState([]);
-
-  // Search states
-  const [searchTerms, setSearchTerms] = useState({
-    teams: '',
-    matches: '',
-    airports: ''
-  });
-
-  // Initialize data on component mount
-  useEffect(() => {
-    // Load all data on initial mount
-    const initialize = async () => {
-      await fetchStatsData();
-      await fetchDashboardData();
-
-      // Only fetch tab data if not on overview
-      if (activeTab !== "overview") {
-        await fetchTabData();
+      if (error) {
+        throw error
       }
-    };
 
-    initialize();
-  }, []);
+      if (airportsData) {
+        const airportsById: Record<string, Airport> = {}
+        airportsData.forEach(airport => {
+          airportsById[airport.team_id] = airport
+        })
+        setAirportsMap(airportsById)
+      }
+    } catch (error) {
+      console.error("Error fetching airports:", error)
+      toast.error("Failed to load airport data")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-  // Handle tab changes and pagination 
-  useEffect(() => {
-    if (activeTab === "overview") {
-      // On overview tab, refresh dashboard data
-      fetchDashboardData();
-    } else {
-      // On other tabs, fetch tab-specific data or search results
-      if (searchTerms[activeTab]) {
-        handleDynamicSearch(activeTab, searchTerms[activeTab]);
+  const fetchSeasons = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("seasons")
+        .select("season_id")
+        .order("season_id", { ascending: false })
+
+      if (error) {
+        throw error
+      }
+
+      if (data && data.length > 0) {
+        setSeasons(data)
+        // Set the most recent season as default if not already selected
+        if (!selectedSeason) {
+          setSelectedSeason(data[0].season_id)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching seasons:", error)
+      toast.error("Failed to load season data")
+    }
+  }, [selectedSeason]) // This dependency is correct
+  const fetchStats = useCallback(async () => {
+    if (!selectedSeason) return;
+    setIsStatsLoading(true)
+    try {
+      // Get counts in parallel
+      const [leaguesCount, teamsCount] = await Promise.all([
+        supabase.from("leagues").select("league_id", { count: "exact" }),
+        supabase.from("teams").select("team_id", { count: "exact" }),
+      ])
+
+      // Get league season data with filtering
+      let leagueSeasonsQuery = supabase.from("league_seasons").select("total_matches").eq("season_id", selectedSeason)
+
+      if (selectedLeague !== "all") {
+        leagueSeasonsQuery = leagueSeasonsQuery.eq("league_id", selectedLeague)
+      }
+
+      const { data: leagueSeasons } = await leagueSeasonsQuery
+
+      // Calculate total matches from league_seasons
+      const totalMatches = leagueSeasons?.reduce((sum, ls) => sum + (ls.total_matches || 0), 0) || 0
+
+      // Get all matches using pagination
+      let allMatchesData = []
+      let page = 0
+      const pageSize = 1000
+      let hasMore = true
+
+      // Build base query
+      let baseMatchesQuery = supabase
+        .from("matches")
+        .select(`
+        *,
+        home_team_id,
+        away_team_id
+      `)
+        .eq("season_id", selectedSeason)
+
+      if (selectedLeague !== "all") {
+        baseMatchesQuery = baseMatchesQuery.eq("league_id", selectedLeague)
+      }
+
+      // Paginate through all matches
+      while (hasMore) {
+        const { data: pageData, error } = await baseMatchesQuery
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+
+        if (error) {
+          console.error("Error fetching matches page:", error)
+          break
+        }
+
+        if (pageData && pageData.length > 0) {
+          allMatchesData = [...allMatchesData, ...pageData]
+          // Check if we need to fetch more
+          hasMore = pageData.length === pageSize
+          page++
+        } else {
+          hasMore = false
+        }
+      }
+
+      // console.log('Total matches fetched:', allMatchesData.length)
+
+      // Calculate total emissions using the accurate method
+      let totalEmissions = 0
+      if (allMatchesData.length > 0 && Object.keys(airportsMap).length > 0) {
+        // Calculate emissions for each match and sum them up
+        allMatchesData.forEach(match => {
+          const homeAirport = airportsMap[match.home_team_id]
+          const awayAirport = airportsMap[match.away_team_id]
+
+          if (homeAirport && awayAirport) {
+            // Use the detailed emissions calculation from the other component
+            const result = calculateEmissionsBetweenAirports(
+              homeAirport,
+              awayAirport,
+              isRoundTrip
+            )
+
+            // Scale by number of passengers (team and staff)
+            const matchEmissions = result.totalEmissions * passengers / 35 // Normalize if passenger count is different
+            totalEmissions += matchEmissions
+          }
+        })
+      }
+
+      // Calculate emissions change based on historical data (could be replaced with real data)
+      const previousEmissions = totalEmissions * (1 + (Math.random() > 0.5 ? 0.05 : -0.15))
+      const emissionsChange = Math.round(((totalEmissions - previousEmissions) / previousEmissions) * 1000) / 10
+
+      // Calculate emissions reduction and progress toward goal
+      const emissionsReduction = Math.round(previousEmissions - totalEmissions)
+      const progress = Math.min(100, Math.round((emissionsReduction / stats.emissionsGoal) * 100))
+
+      setStats({
+        leagues: leaguesCount.count || 0,
+        teams: teamsCount.count || 0,
+        matches: totalMatches,
+        totalEmissions: Math.round(totalEmissions),
+        emissionsChange: emissionsChange,
+        emissionsReduction: Math.max(0, emissionsReduction), // Ensure it's not negative
+        emissionsGoal: 5000,
+        progress: progress,
+        matchesProcessed: allMatchesData.length // Add this to track processed matches
+      })
+    } catch (error) {
+      console.error("Error fetching stats:", error)
+      toast.error("Failed to load statistics")
+    } finally {
+      setIsStatsLoading(false)
+    }
+  }, [selectedLeague, selectedSeason, airportsMap, passengers, isRoundTrip, stats.emissionsGoal])
+
+  const fetchMatches = useCallback(async () => {
+    if (!selectedSeason) return;
+    setIsMatchesLoading(true)
+
+    try {
+      // First, get total count for pagination
+      let countQuery = supabase
+        .from("matches")
+        .select("match_id", { count: "exact" })
+        .eq("season_id", selectedSeason)
+
+      if (selectedLeague !== "all") {
+        countQuery = countQuery.eq("league_id", selectedLeague)
+      }
+
+      if (searchQuery) {
+        countQuery = countQuery.or(`home_team.ilike.%${searchQuery}%,away_team.ilike.%${searchQuery}%`)
+      }
+
+      const { count } = await countQuery
+      setTotalMatches(count || 0)
+
+      // Then, fetch paginated data for the table
+      let matchesQuery = supabase
+        .from("matches")
+        .select(`
+          *,
+          league_seasons!inner (
+            league_id,
+            leagues (
+              name
+            )
+          ),
+          home_team_id,
+          away_team_id,
+          home_team,
+          away_team
+        `)
+        .eq("season_id", selectedSeason)
+        .order("date", { ascending: true })
+
+      if (selectedLeague !== "all") {
+        matchesQuery = matchesQuery.eq("league_id", selectedLeague)
+      }
+
+      if (searchQuery) {
+        matchesQuery = matchesQuery.or(`home_team.ilike.%${searchQuery}%,away_team.ilike.%${searchQuery}%`)
+      }
+
+      // Add pagination
+      matchesQuery = matchesQuery
+        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1)
+
+      const { data: matchesData, error: matchesError } = await matchesQuery
+
+      if (matchesError) {
+        throw matchesError
+      }
+
+      if (matchesData) {
+        // Process matches with accurate emissions data
+        const matchesWithEmissions = matchesData.map((match) => {
+          const homeAirport = airportsMap[match.home_team_id]
+          const awayAirport = airportsMap[match.away_team_id]
+
+          let emissions = 0
+          let distance = 0
+          let flightStats = null
+
+          if (homeAirport && awayAirport) {
+            // Use the detailed emissions calculation 
+            const result = calculateEmissionsBetweenAirports(
+              homeAirport,
+              awayAirport,
+              isRoundTrip
+            )
+
+            distance = result.distanceKm
+            emissions = result.totalEmissions * passengers / 35 // Scale by passenger count
+
+            // Get additional flight statistics
+            flightStats = getFlightStatistics(
+              result.distanceKm / (isRoundTrip ? 2 : 1), // One-way distance for stats
+              isRoundTrip
+            )
+          }
+
+          return {
+            ...match,
+            distance,
+            flightStats,
+            match_emissions: [{ emissions, distance }],
+          }
+        })
+
+        setMatches(matchesWithEmissions)
       } else {
-        fetchTabData();
+        setMatches([])
       }
-    }
-  }, [activeTab, currentPage, itemsPerPage]);
-
-  const fetchStatsData = async () => {
-    try {
-      // Get counts for dashboard stats
-      const { count: totalLeagues } = await supabase.from('leagues').select('*', { count: 'exact', head: true });
-      const { count: totalTeams } = await supabase.from('teams').select('*', { count: 'exact', head: true });
-      const { count: totalMatches } = await supabase.from('matches').select('*', { count: 'exact', head: true });
-      const { count: totalSeasons } = await supabase.from('seasons').select('*', { count: 'exact', head: true });
-      const { count: totalAirports } = await supabase.from('airports').select('*', { count: 'exact', head: true });
-
-      // Fetch all teams, leagues, and seasons for dropdowns (needed everywhere)
-      const { data: allTeamsData, error: allTeamsError } = await supabase
-        .from('teams')
-        .select('team_id, name, city, country, stadium, capacity, founded');
-
-      if (allTeamsError) throw allTeamsError;
-
-      const { data: allLeaguesData, error: allLeaguesError } = await supabase
-        .from('leagues')
-        .select('league_id, name, country');
-
-      if (allLeaguesError) throw allLeaguesError;
-
-      const { data: allSeasonsData, error: allSeasonsError } = await supabase
-        .from('seasons')
-        .select('season_id, start_date, end_date');
-
-      if (allSeasonsError) throw allSeasonsError;
-
-      // Set complete datasets for dropdowns
-      setAllTeams(allTeamsData || []);
-      setAllLeagues(allLeaguesData || []);
-      setAllSeasons(allSeasonsData || []);
-
-      // Update stats
-      setStats(prev => ({
-        ...prev,
-        leagues: totalLeagues || 0,
-        teams: totalTeams || 0,
-        matches: totalMatches || 0,
-        seasons: totalSeasons || 0,
-        airports: totalAirports || 0
-      }));
     } catch (error) {
-      console.error("Error fetching stats data:", error);
-      setLoadingError("Failed to load statistics. Please try again.");
-    }
-  };
-
-  const fetchDashboardData = async () => {
-    setDashboardLoading(true);
-    try {
-      const today = new Date();
-      const todayFormatted = format(today, 'yyyy-MM-dd');
-
-      // Fetch latest matches (last 5 matches before today)
-      const { data: latestMatchesData, error: latestMatchesError } = await supabase
-        .from('matches')
-        .select('match_id, date, home_team, away_team, stadium')
-        .lt('date', todayFormatted)
-        .order('date', { ascending: false })
-        .limit(5);
-
-      if (latestMatchesError) throw latestMatchesError;
-      setLatestMatches(latestMatchesData || []);
-
-      // Fetch upcoming matches (next 5 matches from today)
-      const { data: upcomingMatchesData, error: upcomingMatchesError } = await supabase
-        .from('matches')
-        .select('match_id, date, home_team, away_team, stadium')
-        .gte('date', todayFormatted)
-        .order('date', { ascending: true })
-        .limit(5);
-
-      if (upcomingMatchesError) throw upcomingMatchesError;
-      setUpcomingMatches(upcomingMatchesData || []);
-
-      // Update stats for upcoming matches
-      setStats(prev => ({
-        ...prev,
-        upcomingMatches: upcomingMatchesData?.length || 0
-      }));
-
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      setLoadingError("Failed to load dashboard data. Please try again.");
+      console.error("Error fetching matches:", error)
+      toast.error("Failed to load match data")
     } finally {
-      setDashboardLoading(false);
+      setIsMatchesLoading(false)
     }
-  };
+  }, [selectedLeague, selectedSeason, airportsMap, passengers, isRoundTrip, searchQuery, currentPage, pageSize])
 
-  const fetchTabData = async () => {
-    setIsLoading(true);
-    setLoadingError(null);
+  const fetchChartData = useCallback(async () => {
+    if (!selectedSeason) return;
+    setIsChartLoading(true)
+
     try {
-      // Skip fetching data for other tabs if on overview tab
-      if (activeTab === "overview") return;
+      let chartDataQuery = supabase
+        .from("matches")
+        .select(`
+          *,
+          league_seasons!inner (
+            league_id,
+            leagues (
+              name
+            )
+          ),
+          home_team_id,
+          away_team_id,
+          home_team,
+          away_team
+        `)
+        .eq("season_id", selectedSeason)
+        .order("date", { ascending: true })
 
-      // Fetch tab-specific data with pagination
-      let leaguesData = [], teamsData = [], matchesData = [], seasonsData = [], airportsData = [];
-      let leaguesCount = 0, teamsCount = 0, matchesCount = 0, seasonsCount = 0, airportsCount = 0;
-
-      // Only fetch data for the active tab to improve performance
-      if (activeTab === "leagues" || activeTab === "all") {
-        const { data, error, count } = await supabase
-          .from('leagues')
-          .select('league_id, name, country', { count: 'exact' })
-          .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
-
-        if (error) throw error;
-        leaguesData = data || [];
-        leaguesCount = count || 0;
+      if (selectedLeague !== "all") {
+        chartDataQuery = chartDataQuery.eq("league_id", selectedLeague)
       }
 
-      if (activeTab === "teams" || activeTab === "all") {
-        const { data, error, count } = await supabase
-          .from('teams')
-          .select('team_id, name, city, country, stadium, capacity, founded', { count: 'exact' })
-          .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
+      const { data: chartMatchesData, error: chartError } = await chartDataQuery
 
-        if (error) throw error;
-        teamsData = data || [];
-        teamsCount = count || 0;
+      if (chartError) {
+        throw chartError
       }
 
-      if (activeTab === "matches" || activeTab === "all") {
-        const { data, error, count } = await supabase
-          .from('matches')
-          .select('match_id, date, league_id, season_id, home_team_id, home_team, away_team_id, away_team, home_city, away_city, stadium, country', { count: 'exact' })
-          .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
+      if (chartMatchesData) {
+        // Process matches with emissions data for charts
+        const processedData = chartMatchesData.map((match) => {
+          const homeAirport = airportsMap[match.home_team_id]
+          const awayAirport = airportsMap[match.away_team_id]
 
-        if (error) throw error;
-        matchesData = data || [];
-        matchesCount = count || 0;
+          let emissions = 0
+          let distance = 0
+
+          if (homeAirport && awayAirport) {
+            const result = calculateEmissionsBetweenAirports(
+              homeAirport,
+              awayAirport,
+              isRoundTrip
+            )
+
+            distance = result.distanceKm
+            emissions = result.totalEmissions * passengers / 35
+          }
+
+          return {
+            ...match,
+            distance,
+            match_emissions: [{ emissions, distance }],
+          }
+        })
+
+        setChartMatches(processedData)
+        return processedData
       }
 
-      if (activeTab === "seasons" || activeTab === "all") {
-        const { data, error, count } = await supabase
-          .from('seasons')
-          .select('season_id, start_date, end_date', { count: 'exact' })
-          .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
-
-        if (error) throw error;
-        seasonsData = data || [];
-        seasonsCount = count || 0;
-      }
-
-      if (activeTab === "airports" || activeTab === "all") {
-        const { data, error, count } = await supabase
-          .from('airports')
-          .select('team_id, iata_code, airport_name, latitude, longitude', { count: 'exact' })
-          .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
-
-        if (error) throw error;
-        airportsData = data || [];
-        airportsCount = count || 0;
-      }
-
-      // Set state with fetched data
-      setLeagues(leaguesData);
-      setTeams(teamsData);
-      setMatches(matchesData);
-      setSeasons(seasonsData);
-      setAirports(airportsData);
-
-      // Update total counts for pagination
-      setTotalItems({
-        leagues: leaguesCount,
-        teams: teamsCount,
-        matches: matchesCount,
-        seasons: seasonsCount,
-        airports: airportsCount
-      });
+      return []
     } catch (error) {
-      console.error("Error fetching tab data:", error);
-      setLoadingError("Failed to load data. Please try again.");
+      console.error("Error fetching chart data:", error)
+      toast.error("Failed to load chart data")
+      return []
     } finally {
-      setIsLoading(false);
+      setIsChartLoading(false)
     }
-  };
+  }, [selectedLeague, selectedSeason, airportsMap, passengers, isRoundTrip])
 
-  // Dynamic search function
-  const handleDynamicSearch = async (componentName, searchInput) => {
-    setIsLoading(true);
-    setLoadingError(null);
+  const fetchEmissionsData = useCallback(async () => {
+    setIsChartLoading(true)
 
     try {
-      setSearchTerms(prev => ({
-        ...prev,
-        [componentName]: searchInput
-      }));
+      // Get chart data for emissions calculations
+      const chartData = await fetchChartData()
 
-      let filteredData = [];
+      if (chartData && chartData.length > 0) {
+        // Prepare league names map for emissions calculation
+        const leagueNamesMap: Record<string, string> = {}
+        chartData.forEach(match => {
+          if (match.league_seasons?.leagues?.name && match.league_id) {
+            leagueNamesMap[match.league_id] = match.league_seasons.leagues.name
+          }
+        })
+        setLeagueNames(leagueNamesMap)
 
-      switch (componentName) {
-        case 'teams':
-          const { data: teamsData, error: teamsError } = await supabase
-            .from('teams')
-            .select('team_id, name, city, country, stadium, capacity, founded')
-            .or(`name.ilike.%${searchInput}%,city.ilike.%${searchInput}%,country.ilike.%${searchInput}%`)
-            .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
+        // If showing all leagues, group by league
+        if (selectedLeague === "all") {
+          // Create a map to store emissions by league
+          const leagueEmissionsMap: Record<string, { name: string, emissions: number }> = {}
 
-          if (teamsError) throw teamsError;
-          filteredData = teamsData || [];
-          setTeams(filteredData);
+          // Calculate emissions for each match
+          for (const match of chartData) {
+            const homeAirport = airportsMap[match.home_team_id]
+            const awayAirport = airportsMap[match.away_team_id]
 
-          const { count: teamsCount } = await supabase
-            .from('teams')
-            .select('team_id', { count: 'exact', head: true })
-            .or(`name.ilike.%${searchInput}%,city.ilike.%${searchInput}%,country.ilike.%${searchInput}%`);
+            if (homeAirport && awayAirport && match.league_id) {
+              const leagueName = leagueNamesMap[match.league_id] || match.league_id
 
-          setTotalItems(prev => ({ ...prev, teams: teamsCount || 0 }));
-          break;
+              // Calculate emissions using the detailed method
+              const result = calculateEmissionsBetweenAirports(
+                homeAirport,
+                awayAirport,
+                isRoundTrip
+              )
 
-        case 'matches':
-          const { data: matchesData, error: matchesError } = await supabase
-            .from('matches')
-            .select('match_id, date, league_id, season_id, home_team_id, home_team, away_team_id, away_team, home_city, away_city, stadium, country')
-            .or(`home_team.ilike.%${searchInput}%,away_team.ilike.%${searchInput}%,stadium.ilike.%${searchInput}%`)
-            .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
+              // Scale by number of passengers
+              const matchEmissions = result.totalEmissions * passengers / 35
 
-          if (matchesError) throw matchesError;
-          filteredData = matchesData || [];
-          setMatches(filteredData);
+              // Add to league total
+              if (!leagueEmissionsMap[match.league_id]) {
+                leagueEmissionsMap[match.league_id] = { name: leagueName, emissions: 0 }
+              }
+              leagueEmissionsMap[match.league_id].emissions += matchEmissions
+            }
+          }
 
-          const { count: matchesCount } = await supabase
-            .from('matches')
-            .select('match_id', { count: 'exact', head: true })
-            .or(`home_team.ilike.%${searchInput}%,away_team.ilike.%${searchInput}%,stadium.ilike.%${searchInput}%`);
+          setEmissionsData(
+            Object.values(leagueEmissionsMap)
+              .map(({ name, emissions }) => ({
+                label: name,
+                value: emissions,
+              }))
+              .sort((a, b) => b.value - a.value)
+          )
+        } else {
+          // Show top teams in the selected league by calculating team-specific emissions
+          const teamEmissionsMap: Record<string, { name: string, emissions: number }> = {}
 
-          setTotalItems(prev => ({ ...prev, matches: matchesCount || 0 }));
-          break;
+          // Calculate emissions for each match
+          for (const match of chartData) {
+            const homeAirport = airportsMap[match.home_team_id]
+            const awayAirport = airportsMap[match.away_team_id]
 
-        case 'airports':
-          const { data: airportsData, error: airportsError } = await supabase
-            .from('airports')
-            .select('team_id, iata_code, airport_name, latitude, longitude')
-            .or(`airport_name.ilike.%${searchInput}%,iata_code.ilike.%${searchInput}%`)
-            .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
+            if (homeAirport && awayAirport) {
+              // Calculate emissions using the detailed method
+              const result = calculateEmissionsBetweenAirports(
+                homeAirport,
+                awayAirport,
+                isRoundTrip
+              )
 
-          if (airportsError) throw airportsError;
-          filteredData = airportsData || [];
-          setAirports(filteredData);
+              // Scale by number of passengers
+              const matchEmissions = result.totalEmissions * passengers / 35
 
-          const { count: airportsCount } = await supabase
-            .from('airports')
-            .select('team_id', { count: 'exact', head: true })
-            .or(`airport_name.ilike.%${searchInput}%,iata_code.ilike.%${searchInput}%`);
+              // Add to home team total (home team is responsible for organizing travel)
+              if (!teamEmissionsMap[match.home_team_id]) {
+                teamEmissionsMap[match.home_team_id] = { name: match.home_team, emissions: 0 }
+              }
+              teamEmissionsMap[match.home_team_id].emissions += matchEmissions
+            }
+          }
 
-          setTotalItems(prev => ({ ...prev, airports: airportsCount || 0 }));
-          break;
+          setEmissionsData(
+            Object.values(teamEmissionsMap)
+              .map(({ name, emissions }) => ({
+                label: name,
+                value: emissions,
+              }))
+              .sort((a, b) => b.value - a.value)
+              .slice(0, 5)
+          )
+        }
+      } else {
+        setEmissionsData([])
+      }
+    } catch (error) {
+      console.error("Error fetching emissions data:", error)
+      toast.error("Failed to load emissions data")
+    }
+  }, [selectedLeague, selectedSeason, airportsMap, passengers, isRoundTrip, fetchChartData])
 
-        default:
-          break;
+  const fetchLeagues = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const { data, error } = await supabase.from("leagues").select("*")
+      if (error) {
+        throw error
+      }
+      if (data) {
+        setLeagues(data)
+      }
+    } catch (error) {
+      console.error("Error fetching leagues:", error)
+      toast.error("Failed to load league data")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+
+
+  // Initial data loading
+  useEffect(() => {
+    fetchLeagues()
+    fetchAirports()
+    fetchSeasons()
+  }, [fetchLeagues, fetchAirports])
+  // Add this new useEffect to handle season changes
+  useEffect(() => {
+    if (selectedSeason && Object.keys(airportsMap).length > 0) {
+      // Reset pagination when season changes
+      setCurrentPage(1)
+
+      // Clear existing data to avoid showing stale data
+      setMatches([])
+      setChartMatches([])
+      setEmissionsData([])
+
+      // Fetch fresh data for the new season
+      fetchStats()
+      fetchMatches()
+      fetchChartData()
+      fetchEmissionsData()
+    }
+  }, [selectedSeason, airportsMap, fetchStats, fetchMatches, fetchChartData, fetchEmissionsData])
+  // Load data when airportsMap is available
+  useEffect(() => {
+    if (Object.keys(airportsMap).length > 0 && selectedSeason) {
+      // Only load data for the active tab to optimize performance
+      if (activeTab === "overview" || activeTab === "charts") {
+        fetchStats()
+        fetchEmissionsData()
       }
 
-      setCurrentPage(1);
+      if (activeTab === "details") {
+        fetchMatches()
+      }
 
-    } catch (error) {
-      console.error(`Error searching ${componentName}:`, error);
-      setLoadingError(`Failed to search ${componentName}. Please try again.`);
-    } finally {
-      setIsLoading(false);
+      // Chart data needed for all tabs
+      fetchChartData()
     }
-  };
+  }, [
+    activeTab,
+    selectedLeague,
+    selectedSeason,
+    fetchStats,
+    fetchMatches,
+    fetchEmissionsData,
+    fetchChartData,
+    airportsMap,
+    passengers,
+    isRoundTrip,
+    searchQuery,
+    currentPage,
+    pageSize
+  ])
 
-  // CRUD operations for leagues
-  const handleAddLeague = async (league) => {
-    try {
-      const { data, error } = await supabase
-        .from('leagues')
-        .insert([{
-          league_id: parseInt(league.league_id),
-          name: league.name,
-          country: league.country
-        }])
-        .select();
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value)
+    setCurrentPage(1) // Reset to first page when searching
+  }
 
-      if (error) throw error;
-
-      fetchTabData();
-      fetchStatsData(); // Update stats
-    } catch (error) {
-      console.error("Error adding league:", error);
-    }
-  };
-
-  const handleEditLeague = async (league) => {
-    try {
-      const { error } = await supabase
-        .from('leagues')
-        .update({
-          name: league.name,
-          country: league.country
-        })
-        .eq('league_id', parseInt(league.league_id));
-
-      if (error) throw error;
-
-      fetchTabData();
-    } catch (error) {
-      console.error("Error updating league:", error);
-    }
-  };
-
-  const handleDeleteLeague = async (league_id) => {
-    try {
-      const { error } = await supabase
-        .from('leagues')
-        .delete()
-        .eq('league_id', parseInt(league_id));
-
-      if (error) throw error;
-
-      fetchTabData();
-      fetchStatsData(); // Update stats
-    } catch (error) {
-      console.error("Error deleting league:", error);
-    }
-  };
-
-  // CRUD operations for teams
-  const handleAddTeam = async (team) => {
-    try {
-      const { data, error } = await supabase
-        .from('teams')
-        .insert([{
-          team_id: parseInt(team.team_id),
-          name: team.name,
-          city: team.city,
-          country: team.country,
-          stadium: team.stadium,
-          capacity: parseInt(team.capacity || 0),
-          founded: parseInt(team.founded || 0)
-        }])
-        .select();
-
-      if (error) throw error;
-
-      fetchTabData();
-      fetchStatsData(); // Update stats
-    } catch (error) {
-      console.error("Error adding team:", error);
-    }
-  };
-
-  const handleEditTeam = async (team) => {
-    try {
-      const { error } = await supabase
-        .from('teams')
-        .update({
-          name: team.name,
-          city: team.city,
-          country: team.country,
-          stadium: team.stadium,
-          capacity: parseInt(team.capacity || 0),
-          founded: parseInt(team.founded || 0)
-        })
-        .eq('team_id', parseInt(team.team_id));
-
-      if (error) throw error;
-
-      fetchTabData();
-    } catch (error) {
-      console.error("Error updating team:", error);
-    }
-  };
-
-  const handleDeleteTeam = async (team_id) => {
-    try {
-      const { error } = await supabase
-        .from('teams')
-        .delete()
-        .eq('team_id', parseInt(team_id));
-
-      if (error) throw error;
-
-      fetchTabData();
-      fetchStatsData(); // Update stats
-    } catch (error) {
-      console.error("Error deleting team:", error);
-    }
-  };
-
-  // CRUD operations for matches
-  const handleAddMatch = async (match) => {
-    try {
-      const { data, error } = await supabase
-        .from('matches')
-        .insert([{
-          match_id: parseInt(match.match_id),
-          date: match.date,
-          league_id: parseInt(match.league_id),
-          season_id: match.season_id,
-          home_team_id: parseInt(match.home_team_id),
-          home_team: match.home_team,
-          away_team_id: parseInt(match.away_team_id),
-          away_team: match.away_team,
-          home_city: match.home_city,
-          away_city: match.away_city,
-          stadium: match.stadium,
-          country: match.country
-        }])
-        .select();
-
-      if (error) throw error;
-
-      fetchTabData();
-      fetchDashboardData(); // Refresh dashboard data for upcoming matches
-      fetchStatsData(); // Update stats
-    } catch (error) {
-      console.error("Error adding match:", error);
-    }
-  };
-
-  const handleEditMatch = async (match) => {
-    try {
-      const { error } = await supabase
-        .from('matches')
-        .update({
-          date: match.date,
-          league_id: parseInt(match.league_id),
-          season_id: match.season_id,
-          home_team_id: parseInt(match.home_team_id),
-          home_team: match.home_team,
-          away_team_id: parseInt(match.away_team_id),
-          away_team: match.away_team,
-          home_city: match.home_city,
-          away_city: match.away_city,
-          stadium: match.stadium,
-          country: match.country
-        })
-        .eq('match_id', parseInt(match.match_id));
-
-      if (error) throw error;
-
-      fetchTabData();
-      fetchDashboardData(); // Refresh dashboard data
-    } catch (error) {
-      console.error("Error updating match:", error);
-    }
-  };
-
-  const handleDeleteMatch = async (match_id) => {
-    try {
-      const { error } = await supabase
-        .from('matches')
-        .delete()
-        .eq('match_id', parseInt(match_id));
-
-      if (error) throw error;
-
-      fetchTabData();
-      fetchDashboardData(); // Refresh dashboard data
-      fetchStatsData(); // Update stats
-    } catch (error) {
-      console.error("Error deleting match:", error);
-    }
-  };
-
-  // CRUD operations for seasons
-  const handleAddSeason = async (season) => {
-    try {
-      const { data, error } = await supabase
-        .from('seasons')
-        .insert([{
-          season_id: season.season_id,
-          start_date: season.start_date,
-          end_date: season.end_date
-        }])
-        .select();
-
-      if (error) throw error;
-
-      fetchTabData();
-      fetchStatsData(); // Update stats
-    } catch (error) {
-      console.error("Error adding season:", error);
-    }
-  };
-
-  const handleEditSeason = async (season) => {
-    try {
-      const { error } = await supabase
-        .from('seasons')
-        .update({
-          start_date: season.start_date,
-          end_date: season.end_date
-        })
-        .eq('season_id', season.season_id);
-
-      if (error) throw error;
-
-      fetchTabData();
-    } catch (error) {
-      console.error("Error updating season:", error);
-    }
-  };
-
-  const handleDeleteSeason = async (season_id) => {
-    try {
-      const { error } = await supabase
-        .from('seasons')
-        .delete()
-        .eq('season_id', season_id);
-
-      if (error) throw error;
-
-      fetchTabData();
-      fetchStatsData(); // Update stats
-    } catch (error) {
-      console.error("Error deleting season:", error);
-    }
-  };
-
-  // CRUD operations for airports
-  const handleAddAirport = async (airport) => {
-    try {
-      const { data, error } = await supabase
-        .from('airports')
-        .insert([airport])
-        .select();
-
-      if (error) throw error;
-
-      fetchTabData();
-      fetchStatsData(); // Update stats
-    } catch (error) {
-      console.error("Error adding airport:", error);
-    }
-  };
-
-  const handleEditAirport = async (airport) => {
-    try {
-      const { error } = await supabase
-        .from('airports')
-        .update({
-          airport_name: airport.airport_name,
-          latitude: airport.latitude,
-          longitude: airport.longitude
-        })
-        .eq('team_id', airport.team_id)
-        .eq('iata_code', airport.iata_code);
-
-      if (error) throw error;
-
-      fetchTabData();
-    } catch (error) {
-      console.error("Error updating airport:", error);
-    }
-  };
-
-  const handleDeleteAirport = async (team_id, iata_code) => {
-    try {
-      const { error } = await supabase
-        .from('airports')
-        .delete()
-        .eq('team_id', team_id)
-        .eq('iata_code', iata_code);
-
-      if (error) throw error;
-
-      fetchTabData();
-      fetchStatsData(); // Update stats
-    } catch (error) {
-      console.error("Error deleting airport:", error);
-    }
-  };
-
-  // Team management function
-  const handleViewTeamSeasons = (team) => {
-    setSelectedTeam(team);
-    setViewMode("teamSeasons");
-  };
-
-  const handleBackToTeams = () => {
-    setSelectedTeam(null);
-    setViewMode("main");
-  };
-
-  // Handle pagination
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
-
-  // Handle tab change
-  const handleTabChange = (value) => {
-    setActiveTab(value);
-    setCurrentPage(1); // Reset to first page when changing tabs
-  };
-
-  // Render pagination component
-  const Pagination = ({ totalItems, currentTab }) => {
-    const totalPages = Math.ceil(totalItems[currentTab] / itemsPerPage);
+  const Pagination = () => {
+    const totalPages = Math.ceil(totalMatches / pageSize)
 
     return (
-      <div className="flex justify-center mt-6">
+      <div className="flex items-center justify-between py-4">
+        <div className="flex-1 text-sm text-muted-foreground">
+          Showing <span className="font-medium">{matches.length}</span> of{" "}
+          <span className="font-medium">{totalMatches}</span> matches
+        </div>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+            onClick={() => setCurrentPage(current => Math.max(1, current - 1))}
             disabled={currentPage === 1}
           >
             Previous
           </Button>
-
-          <div className="text-sm px-2">
+          <div className="text-sm">
             Page {currentPage} of {totalPages || 1}
           </div>
-
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage(current => Math.min(totalPages, current + 1))}
+            disabled={currentPage === totalPages || totalPages === 0}
           >
             Next
           </Button>
-
-          <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
-            <SelectTrigger className="w-20">
-              <SelectValue>{itemsPerPage}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="5">5</SelectItem>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="20">20</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
-    );
-  };
+    )
+  }
 
-  // Get current season data for dashboard
-  const getCurrentSeasonInfo = useMemo(() => {
-    if (allSeasons.length === 0) return { currentSeason: null, previousSeason: null, oldestSeason: null };
 
-    const sortedSeasons = [...allSeasons].sort((a, b) =>
-      new Date(b.end_date) - new Date(a.end_date)
-    );
 
-    const today = new Date();
-    const currentSeason = sortedSeasons.find(s =>
-      new Date(s.start_date) <= today && today <= new Date(s.end_date)
-    ) || sortedSeasons[0];
-
-    const previousSeason = sortedSeasons[sortedSeasons.indexOf(currentSeason) + 1] || null;
-    const oldestSeason = sortedSeasons[sortedSeasons.length - 1] || null;
-
-    return { currentSeason, previousSeason, oldestSeason };
-  }, [allSeasons]);
 
   return (
-    <AuthGuard>
-      <div className="text-white">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Sports Management Dashboard</h1>
-          <p className="text-gray-400">Manage your sports leagues, teams, fixtures, seasons, and airports</p>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">Monitor and analyze sports travel emissions</p>
         </div>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Select
+            value={selectedSeason || ""}
+            onValueChange={(value) => {
+              setSelectedSeason(value);
+              // Reset UI states when season changes
+              setIsStatsLoading(true);
+              setIsMatchesLoading(true);
+              setIsChartLoading(true);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Select season" />
+            </SelectTrigger>
+            <SelectContent>
+              {seasons.map(season => (
+                <SelectItem key={season.season_id} value={season.season_id}>
+                  {season.season_id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {loadingError && (
-          <Alert className="bg-red-900/30 border-red-800 mb-6">
-            <AlertTriangle className="h-4 w-4 text-red-400" />
-            <AlertDescription className="text-red-200">{loadingError}</AlertDescription>
-          </Alert>
-        )}
+          <Select value={selectedLeague} onValueChange={setSelectedLeague}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Select League" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Leagues</SelectItem>
+              {leagues.map((league) => (
+                <SelectItem key={league.league_id} value={league.league_id}>
+                  {league.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {viewMode === "main" ? (
-          <>
-            <Tabs defaultValue="overview" className="w-full" onValueChange={handleTabChange}>
-              <TabsList className="bg-gray-800 border-gray-700 mb-6">
-                <TabsTrigger
-                  value="overview"
-                  className="data-[state=active]:bg-gray-700 data-[state=active]:shadow-none"
-                >
-                  Overview
-                </TabsTrigger>
-                <TabsTrigger
-                  value="leagues"
-                  className="data-[state=active]:bg-gray-700 data-[state=active]:shadow-none"
-                >
-                  Leagues
-                </TabsTrigger>
-                <TabsTrigger
-                  value="teams"
-                  className="data-[state=active]:bg-gray-700 data-[state=active]:shadow-none"
-                >
-                  Teams
-                </TabsTrigger>
-                <TabsTrigger
-                  value="matches"
-                  className="data-[state=active]:bg-gray-700 data-[state=active]:shadow-none"
-                >
-                  Matches
-                </TabsTrigger>
-                <TabsTrigger
-                  value="seasons"
-                  className="data-[state=active]:bg-gray-700 data-[state=active]:shadow-none"
-                >
-                  Seasons
-                </TabsTrigger>
-                <TabsTrigger
-                  value="airports"
-                  className="data-[state=active]:bg-gray-700 data-[state=active]:shadow-none"
-                >
-                  Airports
-                </TabsTrigger>
-                <TabsTrigger
-                  value="data-management"
-                  className="data-[state=active]:bg-gray-700 data-[state=active]:shadow-none"
-                >
-                  <Database className="h-4 w-4 mr-1" />
-                  Data Management
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="overview">
-                {dashboardLoading ? (
-                  <div className="flex justify-center my-12">
-                    <RefreshCw className="h-8 w-8 text-gray-400 animate-spin" />
-                  </div>
-                ) : (
-                  <DashboardOverview
-                    stats={stats}
-                    latestMatches={latestMatches}
-                    upcomingMatches={upcomingMatches}
-                    currentSeason={getCurrentSeasonInfo.currentSeason}
-                    previousSeason={getCurrentSeasonInfo.previousSeason}
-                    oldestSeason={getCurrentSeasonInfo.oldestSeason}
-                  />
-                )}
-              </TabsContent>
-
-              <TabsContent value="leagues">
-                {isLoading ? (
-                  <div className="flex justify-center my-12">
-                    <RefreshCw className="h-8 w-8 text-gray-400 animate-spin" />
-                  </div>
-                ) : (
-                  <>
-                    <LeaguesManagement
-                      leagues={leagues}
-                      seasons={allSeasons}
-                      onAddLeague={handleAddLeague}
-                      onEditLeague={handleEditLeague}
-                      onDeleteLeague={handleDeleteLeague}
-                      supabase={supabase}
-                    />
-                    <Pagination totalItems={totalItems} currentTab="leagues" />
-                  </>
-                )}
-              </TabsContent>
-
-              <TabsContent value="teams">
-                <>
-                  <TeamsManagement
-                    teams={teams}
-                    leagues={allLeagues}
-                    onAddTeam={handleAddTeam}
-                    onEditTeam={handleEditTeam}
-                    onDeleteTeam={handleDeleteTeam}
-                    onViewTeamSeasons={handleViewTeamSeasons}
-                    onSearch={(searchInput) => handleDynamicSearch('teams', searchInput)}
-                    searchTerm={searchTerms.teams}
-                    loading={isLoading}
-                  />
-                  <Pagination totalItems={totalItems} currentTab="teams" />
-                </>
-              </TabsContent>
-
-              <TabsContent value="matches">
-                <>
-                  <MatchesManagement
-                    matches={matches}
-                    teams={allTeams}
-                    leagues={allLeagues}
-                    seasons={allSeasons}
-                    onAddMatch={handleAddMatch}
-                    onEditMatch={handleEditMatch}
-                    onDeleteMatch={handleDeleteMatch}
-                    onSearch={(searchInput) => handleDynamicSearch('matches', searchInput)}
-                    searchTerm={searchTerms.matches}
-                    loading={isLoading}
-                  />
-                  <Pagination totalItems={totalItems} currentTab="matches" />
-                </>
-              </TabsContent>
-
-              <TabsContent value="seasons">
-                {isLoading ? (
-                  <div className="flex justify-center my-12">
-                    <RefreshCw className="h-8 w-8 text-gray-400 animate-spin" />
-                  </div>
-                ) : (
-                  <>
-                    <SeasonsManagement
-                      seasons={seasons}
-                      onAddSeason={handleAddSeason}
-                      onEditSeason={handleEditSeason}
-                      onDeleteSeason={handleDeleteSeason}
-                    />
-                    <Pagination totalItems={totalItems} currentTab="seasons" />
-                  </>
-                )}
-              </TabsContent>
-
-              <TabsContent value="airports">
-                <>
-                  <AirportsManagement
-                    airports={airports}
-                    allTeams={allTeams}
-                    onAddAirport={handleAddAirport}
-                    onEditAirport={handleEditAirport}
-                    onDeleteAirport={handleDeleteAirport}
-                    isLoading={isLoading}
-                    onSearch={(searchInput) => handleDynamicSearch('airports', searchInput)}
-                    searchTerm={searchTerms.airports}
-                    loading={isLoading}
-                  />
-                  <Pagination totalItems={totalItems} currentTab="airports" />
-                </>
-              </TabsContent>
-
-              <TabsContent value="data-management">
-                <DataManagement supabase={supabase} onAddSeason={handleAddSeason} />
-              </TabsContent>
-            </Tabs>
-          </>
-        ) : (
-          <TeamSeasonsManagement
-            team={selectedTeam}
-            allLeagues={allLeagues}
-            allSeasons={allSeasons}
-            supabase={supabase}
-            onBack={handleBackToTeams}
-          />
-        )}
+          <div className="flex items-center space-x-2">
+            <Switch id="dashboard-round-trip" checked={isRoundTrip} onCheckedChange={setIsRoundTrip} />
+            <Label htmlFor="dashboard-round-trip">Include Return Flights</Label>
+          </div>
+        </div>
       </div>
-    </AuthGuard>
-  );
+
+      <Separator />
+
+      <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid grid-cols-3 w-full md:w-[300px]">
+          <TabsTrigger value="overview" className="flex gap-1 items-center">
+            <PieChart className="h-4 w-4" />
+            <span>Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="charts" className="flex gap-1 items-center">
+            <BarChart3 className="h-4 w-4" />
+            <span>Charts</span>
+          </TabsTrigger>
+          <TabsTrigger value="details" className="flex gap-1 items-center">
+            <LineChartIcon className="h-4 w-4" />
+            <span>Details</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          {/* Stats cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {isStatsLoading ? (
+              <>
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+              </>
+            ) : (
+              <>
+                <Card className="overflow-hidden border-l-4 border-l-emerald-500">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Leagues</CardTitle>
+                    <Trophy className="h-4 w-4 text-emerald-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.leagues}</div>
+                    <p className="text-xs text-muted-foreground">{selectedSeason} Season</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-l-4 border-l-emerald-500">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Teams</CardTitle>
+                    <Users className="h-4 w-4 text-emerald-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.teams}</div>
+                    <p className="text-xs text-muted-foreground">{selectedSeason} Season</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-l-4 border-l-emerald-500">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Season Matches</CardTitle>
+                    <Calendar className="h-4 w-4 text-emerald-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.matches}</div>
+                    <p className="text-xs text-muted-foreground">{selectedSeason} Season</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-l-4 border-l-emerald-500">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Emissions</CardTitle>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Plane className="h-4 w-4 text-emerald-500" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>CO2 emissions from team travel</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-baseline">
+                      <div className="text-2xl font-bold">{stats.totalEmissions.toLocaleString()} tonnes</div>
+                      <div className={`ml-2 flex items-center text-sm ${stats.emissionsChange > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                        {stats.emissionsChange > 0 ? (
+                          <ArrowUp className="mr-1 h-4 w-4" />
+                        ) : (
+                          <ArrowDown className="mr-1 h-4 w-4" />
+                        )}
+                        {Math.abs(stats.emissionsChange)}%
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {isRoundTrip ? "Including return flights" : "One-way flights only"}
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
+
+          {/* Charts */}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {isChartLoading ? (
+              <>
+                <ChartSkeleton />
+                <ChartSkeleton />
+              </>
+            ) : (<>
+
+              <Card className="col-span-1">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>{selectedLeague === "all" ? "Emissions by League" : "Top 5 Teams by Emissions"}</CardTitle>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80">
+                        <div className="space-y-2">
+                          <h4 className="font-medium">About this data</h4>
+                          <p className="text-sm text-muted-foreground">
+                            This chart shows the estimated CO2 emissions in tonnes for each {selectedLeague === "all" ? "league" : "team"} based on their travel schedule.
+                          </p>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <CardDescription>
+                    CO2 emissions in tonnes for the {selectedSeason} season
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  <BarChart
+                    data={emissionsData}
+                    colors={["#10b981", "#34d399", "#6ee7b7"]}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="col-span-1">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base sm:text-xl">
+                      Monthly Emissions Trend
+                    </CardTitle>
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20">
+                      {selectedSeason}
+                    </Badge>
+                  </div>
+                  <CardDescription>
+                    Travel emissions over time
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  <LineChart
+                    data={chartMatches}
+                    colors={["#10b981"]}
+                  />
+                </CardContent>
+              </Card>
+            </>)}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="charts" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            {isChartLoading ? (
+              <>
+                <ChartSkeleton />
+                <ChartSkeleton />
+              </>
+            ) : (<>
+
+              <Card className="col-span-1">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+
+                    <CardTitle className="text-base sm:text-xl">{selectedLeague === "all" ? "Emissions by League" : "Top 5 Teams by Emissions"}</CardTitle>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80">
+                        <div className="space-y-2">
+                          <h4 className="font-medium">About this data</h4>
+                          <p className="text-sm text-muted-foreground">
+                            This chart shows the estimated CO2 emissions in tonnes for each {selectedLeague === "all" ? "league" : "team"} based on their travel schedule.
+                          </p>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <CardDescription>
+                    CO2 emissions in tonnes for the {selectedSeason} season
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  <BarChart
+                    data={emissionsData}
+                    colors={["#10b981", "#34d399", "#6ee7b7"]}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="col-span-1">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base sm:text-xl">
+                      Monthly Emissions Trend
+                    </CardTitle>
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20">
+                      {selectedSeason}
+                    </Badge>
+                  </div>
+                  <CardDescription>
+                    Travel emissions over time
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  <LineChart
+                    data={chartMatches}
+                    colors={["#10b981"]}
+                  />
+                </CardContent>
+              </Card>
+            </>)}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="details" className="space-y-6">
+          {/* Match details table with additional stats */}
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+            {isChartLoading ? (
+              <>
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+              </>
+            ) : (
+
+              emissionsData.slice(0, 3).map((item, index) => (
+                <Card key={index} className="overflow-hidden border-l-4 border-l-emerald-500">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base">{item.label}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3">
+                    <div className="text-2xl font-bold">{Math.round(item.value).toLocaleString()} tonnes</div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Plane className="h-3 w-3" />
+                      <span>Approx. {Math.round(item.value / 5)} flights</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+
+            )}
+          </div>{isMatchesLoading ? (
+            <TableSkeleton />
+          ) : (
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <CardTitle className="text-base sm:text-xl">Match Details</CardTitle>
+                  <Input
+                    placeholder="Search matches..."
+                    className="w-full sm:w-[300px]"
+                    value={searchQuery}
+                    onChange={handleSearch}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[400px]">
+                  <table className="w-full">
+                    <thead className="sticky top-0 bg-background border-b">
+                      <tr>
+                        <th className="text-left p-2 text-xs sm:text-sm">Date</th>
+                        <th className="text-left p-2 text-xs sm:text-sm">Teams</th>
+                        <th className="text-left p-2 text-xs sm:text-sm">League</th>
+                        <th className="text-right p-2 text-xs sm:text-sm">Distance (km)</th>
+                        <th className="text-right p-2 text-xs sm:text-sm">Emissions (t)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matches.map((match) => (
+                        <tr key={match.match_id} className="border-b border-border/50 hover:bg-muted/50">
+                          <td className="p-2">
+                            <div className="font-medium">{new Date(match.date).toLocaleDateString()}</div>
+                          </td>
+                          <td className="p-2">
+                            <div className="font-medium">{match.home_team} vs {match.away_team}</div>
+                          </td>
+                          <td className="p-2">
+                            <Badge variant="outline">{leagueNames[match.league_id] || match.league_id}</Badge>
+                          </td>
+                          <td className="p-2 text-right">
+                            {Math.round(match.distance).toLocaleString()}
+                          </td>
+                          <td className="p-2 text-right">
+                            {Math.round(match.match_emissions[0].emissions).toLocaleString()}
+                          </td>
+
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <Pagination />
+                </ScrollArea>
+              </CardContent>
+            </Card>)}
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
 }

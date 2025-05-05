@@ -29,6 +29,7 @@ import { League, Match, Season } from '@/lib/types';
 import { toast } from 'sonner';
 import ErrorBoundary from './ErrorBoundary';
 import MapWrapper from './MapWrapper';
+import { calculateEmissionsBetweenAirports } from '@/lib/icaoCalculations';
 
 const EmissionsCalculationProcess = () => {
   const [leagues, setLeagues] = useState<League[]>([])
@@ -284,6 +285,551 @@ const EmissionsCalculationProcess = () => {
   };
 
   // Handle calculation
+  // const handleCalculate = () => {
+  //   // Reset validation states
+  //   setValidationErrors({});
+  //   setCalculationSteps([]);
+  //   clearDebugLogs();
+
+  //   // Validate inputs
+  //   const errors = {};
+
+  //   if (!homeAirport) {
+  //     errors.homeAirport = 'Please select a home airport';
+  //   }
+
+  //   if (!awayAirport) {
+  //     errors.awayAirport = 'Please select an away airport';
+  //   }
+
+  //   if (homeAirport && awayAirport && homeAirport.id === awayAirport.id) {
+  //     errors.sameAirport = 'Home and away airports cannot be the same';
+  //   }
+
+  //   if (passengers < 1) {
+  //     errors.passengers = 'At least one passenger is required';
+  //   }
+
+  //   // If there are validation errors, display them and return
+  //   if (Object.keys(errors).length > 0) {
+  //     setValidationErrors(errors);
+  //     return;
+  //   }
+
+  //   setIsCalculating(true);
+
+  //   // Simulate API calculation delay
+  //   setTimeout(() => {
+  //     try {
+  //       // Step 1: Calculate distance between airports
+  //       const distance = calculateDistance(
+  //         homeAirport.latitude, homeAirport.longitude,
+  //         awayAirport.latitude, awayAirport.longitude
+  //       );
+
+  //       addDebugLog(`Calculated raw distance: ${distance.toFixed(2)} km`);
+
+  //       const steps = [];
+
+  //       // Step 1: Add distance calculation
+  //       steps.push({
+  //         id: "distance",
+  //         title: "Step 1: Distance Calculation",
+  //         content: `
+  //           <p>Calculating the great circle distance between ${homeAirport.name} (${homeAirport.id}) and ${awayAirport.name} (${awayAirport.id}):</p>
+  //           <ul>
+  //             <li>Home Airport: ${homeAirport.name} (${homeAirport.id}) at coordinates [${homeAirport.latitude.toFixed(4)}, ${homeAirport.longitude.toFixed(4)}]</li>
+  //             <li>Away Airport: ${awayAirport.name} (${awayAirport.id}) at coordinates [${awayAirport.latitude.toFixed(4)}, ${awayAirport.longitude.toFixed(4)}]</li>
+  //             <li>Calculated Great Circle Distance: ${distance.toFixed(2)} km</li>
+  //           </ul>
+  //         `
+  //       });
+
+  //       // Step 2: Determine flight type
+  //       const flightType = determineFlightType(distance);
+
+  //       addDebugLog(`Determined flight type: ${flightType}`);
+
+  //       steps.push({
+  //         id: "flightType",
+  //         title: "Step 2: Flight Type Determination",
+  //         content: `
+  //           <p>Determining the flight type based on distance:</p>
+  //           <ul>
+  //             <li>Distance: ${distance.toFixed(2)} km</li>
+  //             <li>Flight Type: <strong>${convertFlightTypeFormat(flightType)}</strong></li>
+  //             <li>Classification Thresholds:</li>
+  //             <ul>
+  //               <li>Derby Match: < 50 km</li>
+  //               <li>Short Flight: 50 - 800 km</li>
+  //               <li>Medium Flight: 800 - 4800 km</li>
+  //               <li>Long Flight: > 4800 km</li>
+  //             </ul>
+  //           </ul>
+  //         `
+  //       });
+
+  //       // Step 3: Apply route correction
+  //       const adjustedDistance = applyRouteCorrection(distance, flightType);
+
+  //       addDebugLog(`Applied route correction. Adjusted distance: ${adjustedDistance.toFixed(2)} km`);
+
+  //       steps.push({
+  //         id: "routeCorrection",
+  //         title: "Step 3: Route Correction",
+  //         content: `
+  //           <p>Applying standard route inefficiency correction factors:</p>
+  //           <ul>
+  //             <li>Raw Distance: ${distance.toFixed(2)} km</li>
+  //             <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+  //             <li>Route Inefficiency Factor: ${getRouteInefficiencyFactor(flightType).toFixed(2)}</li>
+  //             <li>Adjusted Distance: ${adjustedDistance.toFixed(2)} km</li>
+  //             <li>Additional Distance: ${(adjustedDistance - distance).toFixed(2)} km (+${((adjustedDistance / distance - 1) * 100).toFixed(1)}%)</li>
+  //           </ul>
+  //           <p class="text-xs text-gray-400 mt-2">Note: Route correction accounts for the fact that aircraft don't fly in perfectly straight lines between airports due to air traffic control, weather patterns, and navigational waypoints.</p>
+  //         `
+  //       });
+
+  //       // Calculate emissions based on selected methodology
+  //       let result;
+
+  //       if (aircraftRegistration && aircraft_database[aircraftRegistration]) {
+  //         const aircraft = aircraft_database[aircraftRegistration];
+
+  //         // Step 4: Aircraft details
+  //         steps.push({
+  //           id: "aircraftDetails",
+  //           title: "Step 4: Aircraft Specifications",
+  //           content: `
+  //             <p>Selected Aircraft: ${aircraftRegistration} (${aircraft.model})</p>
+  //             <ul>
+  //               <li>Model: ${aircraft.model}</li>
+  //               <li>Fuel Burn Rate: ${aircraft.fuel_burn_rate_kg_per_hour} kg/hour</li>
+  //               <li>Emissions Factor: ${aircraft.emissions_factor_kg_CO2_per_kg_fuel} kg CO₂/kg fuel</li>
+  //               <li>Typical Capacity: ${aircraftCapacity[aircraft.model] || "Unknown"} passengers</li>
+  //               <li>Cruising Speed: ${aircraftCruisingSpeeds[aircraft.model] || "Unknown"} km/h</li>
+  //             </ul>
+  //           `
+  //         });
+
+  //         // Step 5: Calculate fuel consumption
+  //         const totalFuelKg = calculateFuelBurn(aircraft, adjustedDistance, flightType);
+
+  //         addDebugLog(`Calculated fuel consumption: ${totalFuelKg.toFixed(2)} kg`);
+
+  //         steps.push({
+  //           id: "fuelConsumption",
+  //           title: "Step 5: Fuel Consumption Calculation",
+  //           content: `
+  //             <p>Calculating total fuel consumption for this flight:</p>
+  //             <ul>
+  //               <li>Aircraft: ${aircraft.model}</li>
+  //               <li>Adjusted Distance: ${adjustedDistance.toFixed(2)} km</li>
+  //               <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+  //               <li>Base Fuel Burn Rate: ${aircraft.fuel_burn_rate_kg_per_hour} kg/hour</li>
+  //               <li>Cruising Speed: ${aircraftCruisingSpeeds[aircraft.model] || 800} km/h</li>
+  //               <li>Landing and Take Off (LTO) Fuel: ${getLTOFuel(aircraft.model)} kg</li>
+  //               <li><strong>Total Fuel Consumption: ${totalFuelKg.toFixed(2)} kg</strong></li>
+  //             </ul>
+  //           `
+  //         });
+
+  //         // Step 6: Convert fuel to CO2
+  //         const co2Factor = getCO2EmissionFactor();
+  //         const rawEmissions = totalFuelKg * co2Factor / 1000; // tonnes
+
+  //         addDebugLog(`Converted fuel to CO2: ${rawEmissions.toFixed(3)} tonnes`);
+
+  //         steps.push({
+  //           id: "fuelToCO2",
+  //           title: "Step 6: Fuel to CO₂ Conversion",
+  //           content: `
+  //             <p>Converting fuel consumption to CO₂ emissions:</p>
+  //             <ul>
+  //               <li>Total Fuel: ${totalFuelKg.toFixed(2)} kg</li>
+  //               <li>CO₂ Emission Factor: ${co2Factor} kg CO₂/kg fuel</li>
+  //               <li>Raw CO₂ Emissions: ${(totalFuelKg * co2Factor).toFixed(2)} kg</li>
+  //               <li><strong>Raw CO₂ Emissions: ${rawEmissions.toFixed(3)} tonnes</strong></li>
+  //             </ul>
+  //             <p class="text-xs text-gray-400 mt-2">Note: The standard ICAO CO₂ emission factor of 3.16 kg CO₂ per kg of jet fuel is used.</p>
+  //           `
+  //         });
+
+  //         // Step 7: Load factor adjustment
+  //         const capacity = aircraftCapacity[aircraft.model] || 150;
+  //         const loadFactor = Math.min(passengers / capacity, 1);
+  //         const loadFactorAdjustment = calculateLoadFactorAdjustment(passengers, aircraft.model);
+
+  //         addDebugLog(`Applied load factor adjustment: ${loadFactorAdjustment.toFixed(3)}`);
+
+  //         steps.push({
+  //           id: "loadFactor",
+  //           title: "Step 7: Load Factor Adjustment",
+  //           content: `
+  //             <p>Adjusting emissions based on passenger load:</p>
+  //             <ul>
+  //               <li>Number of Passengers: ${passengers}</li>
+  //               <li>Aircraft Capacity: ${capacity}</li>
+  //               <li>Load Factor: ${(loadFactor * 100).toFixed(1)}%</li>
+  //               <li>Fixed Emissions Ratio: 80%</li>
+  //               <li>Variable Emissions Ratio: 20%</li>
+  //               <li>Load Factor Adjustment: ${loadFactorAdjustment.toFixed(3)}</li>
+  //             </ul>
+  //             <p class="text-xs text-gray-400 mt-2">Note: ICAO methodology suggests that about 80% of emissions are fixed regardless of passenger count, with 20% varying based on load.</p>
+  //           `
+  //         });
+
+  //         // Step 8: Apply radiative forcing index (RFI)
+  //         const baseEmissionsPerKm = rawEmissions / adjustedDistance;
+  //         const emissionsPerKm = baseEmissionsPerKm * loadFactorAdjustment;
+  //         const rfi = calculateRFI(flightType);
+
+  //         addDebugLog(`Applied RFI: ${rfi}`);
+
+  //         steps.push({
+  //           id: "rfi",
+  //           title: "Step 8: Radiative Forcing Index",
+  //           content: `
+  //             <p>Accounting for non-CO₂ climate effects using Radiative Forcing Index (RFI):</p>
+  //             <ul>
+  //               <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+  //               <li>RFI Factor: ${rfi}</li>
+  //               <li>Base Emissions per km: ${(baseEmissionsPerKm * 1000).toFixed(4)} kg CO₂/km</li>
+  //               <li>Load-adjusted Emissions per km: ${(emissionsPerKm * 1000).toFixed(4)} kg CO₂/km</li>
+  //               <li>RFI-adjusted Emissions per km: ${(emissionsPerKm * rfi * 1000).toFixed(4)} kg CO₂/km</li>
+  //             </ul>
+  //             <p class="text-xs text-gray-400 mt-2">Note: The Radiative Forcing Index accounts for additional warming effects from aviation emissions at altitude, including nitrogen oxides, water vapor, and contrails.</p>
+  //           `
+  //         });
+
+  //         // Step 9: Round trip calculation
+  //         let totalEmissions = emissionsPerKm * adjustedDistance * rfi;
+  //         const oneWayEmissions = totalEmissions;
+  //         const finalDistance = isRoundTrip ? distance * 2 : distance;
+  //         const finalAdjustedDistance = isRoundTrip ? adjustedDistance * 2 : adjustedDistance;
+
+  //         if (isRoundTrip) {
+  //           totalEmissions *= 2;
+  //         }
+
+  //         addDebugLog(`Calculated ${isRoundTrip ? 'round-trip' : 'one-way'} emissions: ${totalEmissions.toFixed(3)} tonnes`);
+
+  //         steps.push({
+  //           id: "roundTrip",
+  //           title: "Step 9: Trip Type Calculation",
+  //           content: `
+  //             <p>Calculating final emissions based on trip type:</p>
+  //             <ul>
+  //               <li>Trip Type: ${isRoundTrip ? "Round Trip" : "One Way"}</li>
+  //               <li>One-way Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>
+  //               ${isRoundTrip ? `<li>Return Journey Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>` : ''}
+  //               <li>Final Raw Distance: ${finalDistance.toFixed(2)} km</li>
+  //               <li>Final Adjusted Distance: ${finalAdjustedDistance.toFixed(2)} km</li>
+  //               <li><strong>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</strong></li>
+  //             </ul>
+  //           `
+  //         });
+
+  //         // Step 10: Per passenger calculation
+  //         const emissionsPerPassenger = totalEmissions / passengers;
+
+  //         steps.push({
+  //           id: "perPassenger",
+  //           title: "Step 10: Per Passenger Emissions",
+  //           content: `
+  //             <p>Calculating per-passenger emissions:</p>
+  //             <ul>
+  //               <li>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</li>
+  //               <li>Number of Passengers: ${passengers}</li>
+  //               <li><strong>Emissions per Passenger: ${emissionsPerPassenger.toFixed(3)} tonnes CO₂</strong></li>
+  //             </ul>
+  //           `
+  //         });
+
+  //         // Add methodology notes based on selected methodology
+  //         steps.push({
+  //           id: "methodology",
+  //           title: "Methodology Notes",
+  //           content: getMethodologyDetails(selectedMethodology)
+  //         });
+
+  //         // Calculate emissions equivalences
+  //         const equivalencies = {
+  //           carsPerYear: Math.round(totalEmissions * 4.6),
+  //           homeEnergyForDays: Math.round(totalEmissions * 120),
+  //           smartphonesCharged: Math.round(totalEmissions * 121643),
+  //           treesNeededForYear: Math.round(totalEmissions * 16.5),
+  //           recycledWasteInKg: Math.round(totalEmissions * 1200),
+  //           offsetCostUSD: Math.round(totalEmissions * 13.5)
+  //         };
+
+  //         steps.push({
+  //           id: "equivalencies",
+  //           title: "Emissions Equivalencies",
+  //           content: `
+  //             <p>Understanding the scale of these emissions through equivalencies:</p>
+  //             <ul>
+  //               <li>${equivalencies.carsPerYear} passenger cars driven for one year</li>
+  //               <li>${equivalencies.homeEnergyForDays} days of home energy use</li>
+  //               <li>${equivalencies.smartphonesCharged.toLocaleString()} smartphones charged</li>
+  //               <li>${equivalencies.treesNeededForYear} trees growing for one year to sequester this carbon</li>
+  //               <li>${equivalencies.recycledWasteInKg.toLocaleString()} kg of waste recycled instead of landfilled</li>
+  //               <li>$${equivalencies.offsetCostUSD.toLocaleString()} to offset through carbon credit projects</li>
+  //             </ul>
+  //           `
+  //         });
+
+  //         // Final result
+  //         result = {
+  //           totalEmissions,
+  //           emissionsPerPassenger,
+  //           distanceKm: finalDistance,
+  //           adjustedDistance: finalAdjustedDistance,
+  //           flightType: convertFlightTypeFormat(flightType),
+  //           baseEmissionsPerKm,
+  //           emissionsPerKm,
+  //           isRoundTrip,
+  //           passengers,
+  //           capacity,
+  //           loadFactor,
+  //           loadFactorAdjustment,
+  //           radiativeForcingIndex: rfi,
+  //           co2Factor,
+  //           aircraft: {
+  //             registration: aircraftRegistration,
+  //             model: aircraft.model
+  //           },
+  //           homeAirport,
+  //           awayAirport,
+  //           equivalencies,
+  //           methodology: selectedMethodology,
+  //           fuel: totalFuelKg
+  //         };
+  //       } else {
+  //         // No aircraft selected, use default calculation method
+  //         addDebugLog("No specific aircraft selected, using default ICAO methodology");
+
+  //         // Step 4: Default calculation method
+  //         steps.push({
+  //           id: "defaultMethod",
+  //           title: "Step 4: Default Calculation Method",
+  //           content: `
+  //             <p>No specific aircraft selected. Using standard ${selectedMethodology} methodology for aviation emissions.</p>
+  //             <ul>
+  //               <li>Calibrated Emissions Factor: ${getCalibrationFactor(selectedMethodology)} tonnes CO₂ per km</li>
+  //               <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+  //               <li>Adjusted Distance: ${adjustedDistance.toFixed(2)} km</li>
+  //             </ul>
+  //           `
+  //         });
+
+  //         // Step 5: Emissions adjustment based on flight type
+  //         const CALIBRATED_EMISSIONS_FACTOR = getCalibrationFactor(selectedMethodology);
+  //         const emissionsAdjustment = getEmissionsAdjustment(flightType);
+
+  //         addDebugLog(`Applied emissions adjustment for ${flightType}: ${emissionsAdjustment}`);
+
+  //         steps.push({
+  //           id: "emissionsAdjustment",
+  //           title: "Step 5: Distance-Based Emissions Adjustment",
+  //           content: `
+  //             <p>Adjusting emissions factor based on flight distance category:</p>
+  //             <ul>
+  //               <li>Base Emissions Factor: ${CALIBRATED_EMISSIONS_FACTOR} tonnes CO₂/km</li>
+  //               <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+  //               <li>Distance Adjustment Factor: ${emissionsAdjustment.toFixed(2)}</li>
+  //               <li>Adjusted Emissions Factor: ${(CALIBRATED_EMISSIONS_FACTOR * emissionsAdjustment).toFixed(5)} tonnes CO₂/km</li>
+  //             </ul>
+  //             <p class="text-xs text-gray-400 mt-2">Note: Short flights have higher emissions per km due to the disproportionate fuel consumption during takeoff and landing. Long flights are more fuel-efficient per km once at cruising altitude.</p>
+  //           `
+  //         });
+
+  //         // Step 6: Load factor calculation
+  //         const defaultCapacity = getDefaultCapacity(flightType);
+  //         const loadFactor = Math.min(passengers / defaultCapacity, 1);
+  //         const loadFactorAdjustment = calculateDefaultLoadFactorAdjustment(loadFactor);
+
+  //         addDebugLog(`Applied load factor adjustment: ${loadFactorAdjustment.toFixed(3)}`);
+
+  //         steps.push({
+  //           id: "loadFactor",
+  //           title: "Step 6: Load Factor Adjustment",
+  //           content: `
+  //             <p>Adjusting emissions based on passenger load:</p>
+  //             <ul>
+  //               <li>Number of Passengers: ${passengers}</li>
+  //               <li>Default Aircraft Capacity for ${convertFlightTypeFormat(flightType)}: ${defaultCapacity}</li>
+  //               <li>Load Factor: ${(loadFactor * 100).toFixed(1)}%</li>
+  //               <li>Fixed Emissions Ratio: 80%</li>
+  //               <li>Variable Emissions Ratio: 20%</li>
+  //               <li>Load Factor Adjustment: ${loadFactorAdjustment.toFixed(3)}</li>
+  //             </ul>
+  //             <p class="text-xs text-gray-400 mt-2">Note: Standard methodology suggests that about 80% of emissions are fixed regardless of passenger count, with 20% varying based on load.</p>
+  //           `
+  //         });
+
+  //         // Step 7: Calculate base emissions
+  //         const baseEmissionsPerKm = CALIBRATED_EMISSIONS_FACTOR * emissionsAdjustment;
+  //         const emissionsPerKm = baseEmissionsPerKm * loadFactorAdjustment;
+
+  //         addDebugLog(`Calculated emissions rate: ${(emissionsPerKm * 1000).toFixed(2)} kg CO₂/km`);
+
+  //         // Step 8: Apply radiative forcing index (RFI)
+  //         const rfi = calculateRFI(flightType);
+  //         let totalEmissions = adjustedDistance * emissionsPerKm * rfi;
+
+  //         addDebugLog(`Applied RFI factor: ${rfi}`);
+
+  //         steps.push({
+  //           id: "rfi",
+  //           title: "Step 7: Radiative Forcing Index",
+  //           content: `
+  //             <p>Accounting for non-CO₂ climate effects using Radiative Forcing Index (RFI):</p>
+  //             <ul>
+  //               <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+  //               <li>RFI Factor: ${rfi}</li>
+  //               <li>Base Emissions per km: ${(baseEmissionsPerKm * 1000).toFixed(4)} kg CO₂/km</li>
+  //               <li>Load-adjusted Emissions per km: ${(emissionsPerKm * 1000).toFixed(4)} kg CO₂/km</li>
+  //               <li>RFI-adjusted Emissions per km: ${(emissionsPerKm * rfi * 1000).toFixed(4)} kg CO₂/km</li>
+  //               <li>Adjusted Distance: ${adjustedDistance.toFixed(2)} km</li>
+  //               <li>One-way Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</li>
+  //             </ul>
+  //             <p class="text-xs text-gray-400 mt-2">Note: The Radiative Forcing Index accounts for additional warming effects from aviation emissions at altitude, including nitrogen oxides, water vapor, and contrails.</p>
+  //           `
+  //         });
+
+  //         // Step 9: Round trip calculation
+  //         const oneWayEmissions = totalEmissions;
+  //         const finalDistance = isRoundTrip ? distance * 2 : distance;
+  //         const finalAdjustedDistance = isRoundTrip ? adjustedDistance * 2 : adjustedDistance;
+
+  //         if (isRoundTrip) {
+  //           totalEmissions *= 2;
+  //         }
+
+  //         addDebugLog(`Calculated ${isRoundTrip ? 'round-trip' : 'one-way'} emissions: ${totalEmissions.toFixed(3)} tonnes`);
+
+  //         steps.push({
+  //           id: "roundTrip",
+  //           title: "Step 8: Trip Type Calculation",
+  //           content: `
+  //             <p>Calculating final emissions based on trip type:</p>
+  //             <ul>
+  //               <li>Trip Type: ${isRoundTrip ? "Round Trip" : "One Way"}</li>
+  //               <li>One-way Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>
+  //               ${isRoundTrip ? `<li>Return Journey Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>` : ''}
+  //               <li>Final Raw Distance: ${finalDistance.toFixed(2)} km</li>
+  //               <li>Final Adjusted Distance: ${finalAdjustedDistance.toFixed(2)} km</li>
+  //               <li><strong>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</strong></li>
+  //             </ul>
+  //           `
+  //         });
+
+  //         // Step 10: Per passenger calculation
+  //         const emissionsPerPassenger = totalEmissions / passengers;
+
+  //         steps.push({
+  //           id: "perPassenger",
+  //           title: "Step 9: Per Passenger Emissions",
+  //           content: `
+  //             <p>Calculating per-passenger emissions:</p>
+  //             <ul>
+  //               <li>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</li>
+  //               <li>Number of Passengers: ${passengers}</li>
+  //               <li><strong>Emissions per Passenger: ${emissionsPerPassenger.toFixed(3)} tonnes CO₂</strong></li>
+  //             </ul>
+  //           `
+  //         });
+
+  //         // Add methodology notes based on selected methodology
+  //         steps.push({
+  //           id: "methodology",
+  //           title: "Methodology Notes",
+  //           content: getMethodologyDetails(selectedMethodology)
+  //         });
+
+  //         // Calculate emissions equivalences
+  //         const equivalencies = {
+  //           carsPerYear: Math.round(totalEmissions * 4.6),
+  //           homeEnergyForDays: Math.round(totalEmissions * 120),
+  //           smartphonesCharged: Math.round(totalEmissions * 121643),
+  //           treesNeededForYear: Math.round(totalEmissions * 16.5),
+  //           recycledWasteInKg: Math.round(totalEmissions * 1200),
+  //           offsetCostUSD: Math.round(totalEmissions * 13.5)
+  //         };
+
+  //         steps.push({
+  //           id: "equivalencies",
+  //           title: "Emissions Equivalencies",
+  //           content: `
+  //             <p>Understanding the scale of these emissions through equivalencies:</p>
+  //             <ul>
+  //               <li>${equivalencies.carsPerYear} passenger cars driven for one year</li>
+  //               <li>${equivalencies.homeEnergyForDays} days of home energy use</li>
+  //               <li>${equivalencies.smartphonesCharged.toLocaleString()} smartphones charged</li>
+  //               <li>${equivalencies.treesNeededForYear} trees growing for one year to sequester this carbon</li>
+  //               <li>${equivalencies.recycledWasteInKg.toLocaleString()} kg of waste recycled instead of landfilled</li>
+  //               <li>${equivalencies.offsetCostUSD.toLocaleString()} to offset through carbon credit projects</li>
+  //             </ul>
+  //           `
+  //         });
+
+  //         result = {
+  //           totalEmissions,
+  //           emissionsPerPassenger,
+  //           distanceKm: finalDistance,
+  //           adjustedDistance: finalAdjustedDistance,
+  //           flightType: convertFlightTypeFormat(flightType),
+  //           baseEmissionsPerKm,
+  //           emissionsPerKm,
+  //           isRoundTrip,
+  //           passengers,
+  //           capacity: defaultCapacity,
+  //           loadFactor,
+  //           loadFactorAdjustment,
+  //           radiativeForcingIndex: rfi,
+  //           co2Factor: 3.16,
+  //           aircraft: null,
+  //           homeAirport,
+  //           awayAirport,
+  //           equivalencies,
+  //           methodology: selectedMethodology
+  //         };
+  //       }
+
+  //       setCalculationSteps(steps);
+  //       setCalculationResult(result);
+  //       setExpandedSections({
+  //         distance: true, // Auto-expand first section
+  //         flightType: false,
+  //         routeCorrection: false
+  //       });
+
+  //       // Calculate results with alternative methodologies
+  //       calculateAlternativeMethodologies(distance, adjustedDistance, passengers, isRoundTrip, flightType);
+
+  //       // Add to calculation history
+  //       const historyEntry = {
+  //         id: `calc-${new Date().getTime().toString().slice(-6)}`,
+  //         date: new Date().toISOString().split('T')[0],
+  //         route: `${homeAirport.id} to ${awayAirport.id}`,
+  //         passengers: passengers,
+  //         totalEmissions: result.totalEmissions.toFixed(2),
+  //         methodology: selectedMethodology
+  //       };
+
+  //       setCalculationHistory(prev => [historyEntry, ...prev].slice(0, 10));
+
+  //       setIsCalculating(false);
+  //     } catch (error) {
+  //       console.error("Calculation error:", error);
+  //       addDebugLog(`Error in calculation: ${error.message}`, "error");
+  //       setIsCalculating(false);
+  //     }
+  //   }, 800);
+  // };
+  // Replace the handleCalculate function
+  // Replace the handleCalculate function
   const handleCalculate = () => {
     // Reset validation states
     setValidationErrors({});
@@ -330,18 +876,17 @@ const EmissionsCalculationProcess = () => {
 
         const steps = [];
 
-        // Step 1: Add distance calculation
         steps.push({
           id: "distance",
           title: "Step 1: Distance Calculation",
           content: `
-            <p>Calculating the great circle distance between ${homeAirport.name} (${homeAirport.id}) and ${awayAirport.name} (${awayAirport.id}):</p>
-            <ul>
-              <li>Home Airport: ${homeAirport.name} (${homeAirport.id}) at coordinates [${homeAirport.latitude.toFixed(4)}, ${homeAirport.longitude.toFixed(4)}]</li>
-              <li>Away Airport: ${awayAirport.name} (${awayAirport.id}) at coordinates [${awayAirport.latitude.toFixed(4)}, ${awayAirport.longitude.toFixed(4)}]</li>
-              <li>Calculated Great Circle Distance: ${distance.toFixed(2)} km</li>
-            </ul>
-          `
+          <p>Calculating the great circle distance between ${homeAirport.name} (${homeAirport.id}) and ${awayAirport.name} (${awayAirport.id}):</p>
+          <ul>
+            <li>Home Airport: ${homeAirport.name} (${homeAirport.id}) at coordinates [${homeAirport.latitude.toFixed(4)}, ${homeAirport.longitude.toFixed(4)}]</li>
+            <li>Away Airport: ${awayAirport.name} (${awayAirport.id}) at coordinates [${awayAirport.latitude.toFixed(4)}, ${awayAirport.longitude.toFixed(4)}]</li>
+            <li>Calculated Great Circle Distance: ${distance.toFixed(2)} km</li>
+          </ul>
+        `
         });
 
         // Step 2: Determine flight type
@@ -353,19 +898,19 @@ const EmissionsCalculationProcess = () => {
           id: "flightType",
           title: "Step 2: Flight Type Determination",
           content: `
-            <p>Determining the flight type based on distance:</p>
+          <p>Determining the flight type based on distance:</p>
+          <ul>
+            <li>Distance: ${distance.toFixed(2)} km</li>
+            <li>Flight Type: <strong>${convertFlightTypeFormat(flightType)}</strong></li>
+            <li>Classification Thresholds:</li>
             <ul>
-              <li>Distance: ${distance.toFixed(2)} km</li>
-              <li>Flight Type: <strong>${convertFlightTypeFormat(flightType)}</strong></li>
-              <li>Classification Thresholds:</li>
-              <ul>
-                <li>Derby Match: < 50 km</li>
-                <li>Short Flight: 50 - 800 km</li>
-                <li>Medium Flight: 800 - 4800 km</li>
-                <li>Long Flight: > 4800 km</li>
-              </ul>
+              <li>Derby Match: < 50 km</li>
+              <li>Short Flight: 50 - 800 km</li>
+              <li>Medium Flight: 800 - 4800 km</li>
+              <li>Long Flight: > 4800 km</li>
             </ul>
-          `
+          </ul>
+        `
         });
 
         // Step 3: Apply route correction
@@ -377,22 +922,178 @@ const EmissionsCalculationProcess = () => {
           id: "routeCorrection",
           title: "Step 3: Route Correction",
           content: `
-            <p>Applying standard route inefficiency correction factors:</p>
-            <ul>
-              <li>Raw Distance: ${distance.toFixed(2)} km</li>
-              <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
-              <li>Route Inefficiency Factor: ${getRouteInefficiencyFactor(flightType).toFixed(2)}</li>
-              <li>Adjusted Distance: ${adjustedDistance.toFixed(2)} km</li>
-              <li>Additional Distance: ${(adjustedDistance - distance).toFixed(2)} km (+${((adjustedDistance / distance - 1) * 100).toFixed(1)}%)</li>
-            </ul>
-            <p class="text-xs text-gray-400 mt-2">Note: Route correction accounts for the fact that aircraft don't fly in perfectly straight lines between airports due to air traffic control, weather patterns, and navigational waypoints.</p>
-          `
+          <p>Applying standard route inefficiency correction factors:</p>
+          <ul>
+            <li>Raw Distance: ${distance.toFixed(2)} km</li>
+            <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+            <li>Route Inefficiency Factor: ${getRouteInefficiencyFactor(flightType).toFixed(2)}</li>
+            <li>Adjusted Distance: ${adjustedDistance.toFixed(2)} km</li>
+            <li>Additional Distance: ${(adjustedDistance - distance).toFixed(2)} km (+${((adjustedDistance / distance - 1) * 100).toFixed(1)}%)</li>
+          </ul>
+          <p class="text-xs text-gray-400 mt-2">Note: Route correction accounts for the fact that aircraft don't fly in perfectly straight lines between airports due to air traffic control, weather patterns, and navigational waypoints.</p>
+        `
         });
 
-        // Calculate emissions based on selected methodology
         let result;
 
-        if (aircraftRegistration && aircraft_database[aircraftRegistration]) {
+        if (!aircraftRegistration || !aircraft_database[aircraftRegistration]) {
+          // Use the exact same method as the first file when no aircraft is selected
+          const emissionsResult = calculateEmissionsBetweenAirports(homeAirport, awayAirport, isRoundTrip);
+
+          // Step 4: Default calculation method
+          const CALIBRATED_EMISSIONS_FACTOR = 0.0291; // tonnes CO2 per km (round trip adjusted)
+          const emissionsAdjustment = getEmissionsAdjustment(flightType);
+          const baseEmissionsPerKm = CALIBRATED_EMISSIONS_FACTOR * emissionsAdjustment;
+          const totalEmissions = emissionsResult.totalEmissions;
+
+          steps.push({
+            id: "defaultMethod",
+            title: "Step 4: Default Calculation Method",
+            content: `
+            <p>No specific aircraft selected. Using standard ${selectedMethodology} methodology for aviation emissions.</p>
+            <ul>
+              <li>Calibrated Emissions Factor: ${CALIBRATED_EMISSIONS_FACTOR.toFixed(4)} tonnes CO₂ per km</li>
+              <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+              <li>Distance Adjustment Factor: ${emissionsAdjustment.toFixed(2)}</li>
+              <li>Adjusted Emissions Factor: ${baseEmissionsPerKm.toFixed(4)} tonnes CO₂/km</li>
+              <li>Adjusted Distance: ${emissionsResult.adjustedDistance.toFixed(2)} km</li>
+              <li>One-way Emissions: ${(totalEmissions / (isRoundTrip ? 2 : 1)).toFixed(3)} tonnes CO₂</li>
+            </ul>
+          `
+          });
+
+          // Step 5: Emissions adjustment based on flight type
+          addDebugLog(`Applied emissions adjustment for ${flightType}: ${emissionsAdjustment}`);
+
+          steps.push({
+            id: "emissionsAdjustment",
+            title: "Step 5: Distance-Based Emissions Adjustment",
+            content: `
+            <p>Adjusting emissions factor based on flight distance category:</p>
+            <ul>
+              <li>Base Emissions Factor: ${CALIBRATED_EMISSIONS_FACTOR.toFixed(4)} tonnes CO₂/km</li>
+              <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+              <li>Distance Adjustment Factor: ${emissionsAdjustment.toFixed(2)}</li>
+              <li>Adjusted Emissions per km: ${baseEmissionsPerKm.toFixed(4)} tonnes CO₂/km</li>
+              <li>Adjusted Distance: ${emissionsResult.adjustedDistance.toFixed(2)} km</li>
+              <li>One-way Emissions: ${(totalEmissions / (isRoundTrip ? 2 : 1)).toFixed(3)} tonnes CO₂</li>
+            </ul>
+            <p class="text-xs text-gray-400 mt-2">Note: Short flights have higher emissions per km due to the disproportionate fuel consumption during takeoff and landing.</p>
+          `
+          });
+
+          // Step 6: Apply radiative forcing index (RFI)
+          const rfi = 1.0; // No RFI to match previous file
+
+          steps.push({
+            id: "rfi",
+            title: "Step 6: Radiative Forcing Index",
+            content: `
+            <p>Accounting for non-CO₂ climate effects using Radiative Forcing Index (RFI):</p>
+            <ul>
+              <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+              <li>RFI Factor: ${rfi}</li>
+              <li>Load-adjusted Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</li>
+            </ul>
+            <p class="text-xs text-gray-400 mt-2">Note: RFI is set to 1.0 to align with the previous file's methodology.</p>
+          `
+          });
+
+          // Step 7: Round trip calculation
+          const oneWayEmissions = totalEmissions / (isRoundTrip ? 2 : 1);
+          const finalDistance = isRoundTrip ? distance * 2 : distance;
+          const finalAdjustedDistance = isRoundTrip ? emissionsResult.adjustedDistance : adjustedDistance;
+
+          addDebugLog(`Calculated ${isRoundTrip ? 'round-trip' : 'one-way'} emissions: ${totalEmissions.toFixed(3)} tonnes`);
+
+          steps.push({
+            id: "roundTrip",
+            title: "Step 7: Trip Type Calculation",
+            content: `
+            <p>Calculating final emissions based on trip type:</p>
+            <ul>
+              <li>Trip Type: ${isRoundTrip ? "Round Trip" : "One Way"}</li>
+              <li>One-way Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>
+              ${isRoundTrip ? `<li>Return Journey Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>` : ''}
+              <li>Final Raw Distance: ${finalDistance.toFixed(2)} km</li>
+              <li>Final Adjusted Distance: ${finalAdjustedDistance.toFixed(2)} km</li>
+              <li><strong>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</strong></li>
+            </ul>
+          `
+          });
+
+          // Step 8: Per passenger calculation
+          const emissionsPerPassenger = totalEmissions / passengers;
+
+          steps.push({
+            id: "perPassenger",
+            title: "Step 8: Per Passenger Emissions",
+            content: `
+            <p>Calculating per-passenger emissions:</p>
+            <ul>
+              <li>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</li>
+              <li>Number of Passengers: ${passengers}</li>
+              <li><strong>Emissions per Passenger: ${emissionsPerPassenger.toFixed(3)} tonnes CO₂</strong></li>
+            </ul>
+          `
+          });
+
+          // Add methodology notes
+          steps.push({
+            id: "methodology",
+            title: "Methodology Notes",
+            content: getMethodologyDetails(selectedMethodology)
+          });
+
+          // Calculate emissions equivalencies
+          const equivalencies = {
+            carsPerYear: Math.round(totalEmissions * 4.6),
+            homeEnergyForDays: Math.round(totalEmissions * 120),
+            smartphonesCharged: Math.round(totalEmissions * 121643),
+            treesNeededForYear: Math.round(totalEmissions * 16.5),
+            recycledWasteInKg: Math.round(totalEmissions * 1200),
+            offsetCostUSD: Math.round(totalEmissions * 13.5)
+          };
+
+          steps.push({
+            id: "equivalencies",
+            title: "Emissions Equivalencies",
+            content: `
+            <p>Understanding the scale of these emissions through equivalencies:</p>
+            <ul>
+              <li>${equivalencies.carsPerYear} passenger cars driven for one year</li>
+              <li>${equivalencies.homeEnergyForDays} days of home energy use</li>
+              <li>${equivalencies.smartphonesCharged.toLocaleString()} smartphones charged</li>
+              <li>${equivalencies.treesNeededForYear} trees growing for one year to sequester this carbon</li>
+              <li>${equivalencies.recycledWasteInKg.toLocaleString()} kg of waste recycled instead of landfilled</li>
+              <li>$${equivalencies.offsetCostUSD.toLocaleString()} to offset through carbon credit projects</li>
+            </ul>
+          `
+          });
+
+          result = {
+            totalEmissions,
+            emissionsPerPassenger,
+            distanceKm: finalDistance,
+            adjustedDistance: finalAdjustedDistance,
+            flightType: convertFlightTypeFormat(flightType),
+            baseEmissionsPerKm,
+            emissionsPerKm: emissionsResult.emissionsPerKm,
+            isRoundTrip,
+            passengers,
+            capacity: getDefaultCapacity(flightType),
+            loadFactor: passengers / getDefaultCapacity(flightType),
+            loadFactorAdjustment: 1.0, // No load factor adjustment as per previous file
+            radiativeForcingIndex: rfi,
+            co2Factor: 3.16,
+            aircraft: null,
+            homeAirport,
+            awayAirport,
+            equivalencies,
+            methodology: selectedMethodology
+          };
+        } else {
+          // Calculate emissions with aircraft-specific logic
           const aircraft = aircraft_database[aircraftRegistration];
 
           // Step 4: Aircraft details
@@ -400,15 +1101,15 @@ const EmissionsCalculationProcess = () => {
             id: "aircraftDetails",
             title: "Step 4: Aircraft Specifications",
             content: `
-              <p>Selected Aircraft: ${aircraftRegistration} (${aircraft.model})</p>
-              <ul>
-                <li>Model: ${aircraft.model}</li>
-                <li>Fuel Burn Rate: ${aircraft.fuel_burn_rate_kg_per_hour} kg/hour</li>
-                <li>Emissions Factor: ${aircraft.emissions_factor_kg_CO2_per_kg_fuel} kg CO₂/kg fuel</li>
-                <li>Typical Capacity: ${aircraftCapacity[aircraft.model] || "Unknown"} passengers</li>
-                <li>Cruising Speed: ${aircraftCruisingSpeeds[aircraft.model] || "Unknown"} km/h</li>
-              </ul>
-            `
+            <p>Selected Aircraft: ${aircraftRegistration} (${aircraft.model})</p>
+            <ul>
+              <li>Model: ${aircraft.model}</li>
+              <li>Fuel Burn Rate: ${aircraft.fuel_burn_rate_kg_per_hour} kg/hour</li>
+              <li>Emissions Factor: ${aircraft.emissions_factor_kg_CO2_per_kg_fuel} kg CO₂/kg fuel</li>
+              <li>Typical Capacity: ${aircraftCapacity[aircraft.model] || "Unknown"} passengers</li>
+              <li>Cruising Speed: ${aircraftCruisingSpeeds[aircraft.model] || "Unknown"} km/h</li>
+            </ul>
+          `
           });
 
           // Step 5: Calculate fuel consumption
@@ -420,17 +1121,17 @@ const EmissionsCalculationProcess = () => {
             id: "fuelConsumption",
             title: "Step 5: Fuel Consumption Calculation",
             content: `
-              <p>Calculating total fuel consumption for this flight:</p>
-              <ul>
-                <li>Aircraft: ${aircraft.model}</li>
-                <li>Adjusted Distance: ${adjustedDistance.toFixed(2)} km</li>
-                <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
-                <li>Base Fuel Burn Rate: ${aircraft.fuel_burn_rate_kg_per_hour} kg/hour</li>
-                <li>Cruising Speed: ${aircraftCruisingSpeeds[aircraft.model] || 800} km/h</li>
-                <li>Landing and Take Off (LTO) Fuel: ${getLTOFuel(aircraft.model)} kg</li>
-                <li><strong>Total Fuel Consumption: ${totalFuelKg.toFixed(2)} kg</strong></li>
-              </ul>
-            `
+            <p>Calculating total fuel consumption for this flight:</p>
+            <ul>
+              <li>Aircraft: ${aircraft.model}</li>
+              <li>Adjusted Distance: ${adjustedDistance.toFixed(2)} km</li>
+              <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+              <li>Base Fuel Burn Rate: ${aircraft.fuel_burn_rate_kg_per_hour} kg/hour</li>
+              <li>Cruising Speed: ${aircraftCruisingSpeeds[aircraft.model] || 800} km/h</li>
+              <li>Landing and Take Off (LTO) Fuel: ${getLTOFuel(aircraft.model)} kg</li>
+              <li><strong>Total Fuel Consumption: ${totalFuelKg.toFixed(2)} kg</strong></li>
+            </ul>
+          `
           });
 
           // Step 6: Convert fuel to CO2
@@ -443,15 +1144,15 @@ const EmissionsCalculationProcess = () => {
             id: "fuelToCO2",
             title: "Step 6: Fuel to CO₂ Conversion",
             content: `
-              <p>Converting fuel consumption to CO₂ emissions:</p>
-              <ul>
-                <li>Total Fuel: ${totalFuelKg.toFixed(2)} kg</li>
-                <li>CO₂ Emission Factor: ${co2Factor} kg CO₂/kg fuel</li>
-                <li>Raw CO₂ Emissions: ${(totalFuelKg * co2Factor).toFixed(2)} kg</li>
-                <li><strong>Raw CO₂ Emissions: ${rawEmissions.toFixed(3)} tonnes</strong></li>
-              </ul>
-              <p class="text-xs text-gray-400 mt-2">Note: The standard ICAO CO₂ emission factor of 3.16 kg CO₂ per kg of jet fuel is used.</p>
-            `
+            <p>Converting fuel consumption to CO₂ emissions:</p>
+            <ul>
+              <li>Total Fuel: ${totalFuelKg.toFixed(2)} kg</li>
+              <li>CO₂ Emission Factor: ${co2Factor} kg CO₂/kg fuel</li>
+              <li>Raw CO₂ Emissions: ${(totalFuelKg * co2Factor).toFixed(2)} kg</li>
+              <li><strong>Raw CO₂ Emissions: ${rawEmissions.toFixed(3)} tonnes</strong></li>
+            </ul>
+            <p class="text-xs text-gray-400 mt-2">Note: The standard ICAO CO₂ emission factor of 3.16 kg CO₂ per kg of jet fuel is used.</p>
+          `
           });
 
           // Step 7: Load factor adjustment
@@ -465,23 +1166,23 @@ const EmissionsCalculationProcess = () => {
             id: "loadFactor",
             title: "Step 7: Load Factor Adjustment",
             content: `
-              <p>Adjusting emissions based on passenger load:</p>
-              <ul>
-                <li>Number of Passengers: ${passengers}</li>
-                <li>Aircraft Capacity: ${capacity}</li>
-                <li>Load Factor: ${(loadFactor * 100).toFixed(1)}%</li>
-                <li>Fixed Emissions Ratio: 80%</li>
-                <li>Variable Emissions Ratio: 20%</li>
-                <li>Load Factor Adjustment: ${loadFactorAdjustment.toFixed(3)}</li>
-              </ul>
-              <p class="text-xs text-gray-400 mt-2">Note: ICAO methodology suggests that about 80% of emissions are fixed regardless of passenger count, with 20% varying based on load.</p>
-            `
+            <p>Adjusting emissions based on passenger load:</p>
+            <ul>
+              <li>Number of Passengers: ${passengers}</li>
+              <li>Aircraft Capacity: ${capacity}</li>
+              <li>Load Factor: ${(loadFactor * 100).toFixed(1)}%</li>
+              <li>Fixed Emissions Ratio: 80%</li>
+              <li>Variable Emissions Ratio: 20%</li>
+              <li>Load Factor Adjustment: ${loadFactorAdjustment.toFixed(3)}</li>
+            </ul>
+            <p class="text-xs text-gray-400 mt-2">Note: ICAO methodology suggests that about 80% of emissions are fixed regardless of passenger count, with 20% varying based on load.</p>
+          `
           });
 
           // Step 8: Apply radiative forcing index (RFI)
           const baseEmissionsPerKm = rawEmissions / adjustedDistance;
-          const emissionsPerKm = baseEmissionsPerKm * loadFactorAdjustment;
-          const rfi = calculateRFI(flightType);
+          let totalEmissions = rawEmissions * loadFactorAdjustment;
+          const rfi = 1.0; // No RFI to match first file
 
           addDebugLog(`Applied RFI: ${rfi}`);
 
@@ -489,20 +1190,17 @@ const EmissionsCalculationProcess = () => {
             id: "rfi",
             title: "Step 8: Radiative Forcing Index",
             content: `
-              <p>Accounting for non-CO₂ climate effects using Radiative Forcing Index (RFI):</p>
-              <ul>
-                <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
-                <li>RFI Factor: ${rfi}</li>
-                <li>Base Emissions per km: ${(baseEmissionsPerKm * 1000).toFixed(4)} kg CO₂/km</li>
-                <li>Load-adjusted Emissions per km: ${(emissionsPerKm * 1000).toFixed(4)} kg CO₂/km</li>
-                <li>RFI-adjusted Emissions per km: ${(emissionsPerKm * rfi * 1000).toFixed(4)} kg CO₂/km</li>
-              </ul>
-              <p class="text-xs text-gray-400 mt-2">Note: The Radiative Forcing Index accounts for additional warming effects from aviation emissions at altitude, including nitrogen oxides, water vapor, and contrails.</p>
-            `
+            <p>Accounting for non-CO₂ climate effects using Radiative Forcing Index (RFI):</p>
+            <ul>
+              <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
+              <li>RFI Factor: ${rfi}</li>
+              <li>Load-adjusted Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</li>
+            </ul>
+            <p class="text-xs text-gray-400 mt-2">Note: RFI is set to 1.0 to align with the first file's methodology.</p>
+          `
           });
 
           // Step 9: Round trip calculation
-          let totalEmissions = emissionsPerKm * adjustedDistance * rfi;
           const oneWayEmissions = totalEmissions;
           const finalDistance = isRoundTrip ? distance * 2 : distance;
           const finalAdjustedDistance = isRoundTrip ? adjustedDistance * 2 : adjustedDistance;
@@ -517,16 +1215,16 @@ const EmissionsCalculationProcess = () => {
             id: "roundTrip",
             title: "Step 9: Trip Type Calculation",
             content: `
-              <p>Calculating final emissions based on trip type:</p>
-              <ul>
-                <li>Trip Type: ${isRoundTrip ? "Round Trip" : "One Way"}</li>
-                <li>One-way Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>
-                ${isRoundTrip ? `<li>Return Journey Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>` : ''}
-                <li>Final Raw Distance: ${finalDistance.toFixed(2)} km</li>
-                <li>Final Adjusted Distance: ${finalAdjustedDistance.toFixed(2)} km</li>
-                <li><strong>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</strong></li>
-              </ul>
-            `
+            <p>Calculating final emissions based on trip type:</p>
+            <ul>
+              <li>Trip Type: ${isRoundTrip ? "Round Trip" : "One Way"}</li>
+              <li>One-way Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>
+              ${isRoundTrip ? `<li>Return Journey Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>` : ''}
+              <li>Final Raw Distance: ${finalDistance.toFixed(2)} km</li>
+              <li>Final Adjusted Distance: ${finalAdjustedDistance.toFixed(2)} km</li>
+              <li><strong>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</strong></li>
+            </ul>
+          `
           });
 
           // Step 10: Per passenger calculation
@@ -536,23 +1234,23 @@ const EmissionsCalculationProcess = () => {
             id: "perPassenger",
             title: "Step 10: Per Passenger Emissions",
             content: `
-              <p>Calculating per-passenger emissions:</p>
-              <ul>
-                <li>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</li>
-                <li>Number of Passengers: ${passengers}</li>
-                <li><strong>Emissions per Passenger: ${emissionsPerPassenger.toFixed(3)} tonnes CO₂</strong></li>
-              </ul>
-            `
+            <p>Calculating per-passenger emissions:</p>
+            <ul>
+              <li>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</li>
+              <li>Number of Passengers: ${passengers}</li>
+              <li><strong>Emissions per Passenger: ${emissionsPerPassenger.toFixed(3)} tonnes CO₂</strong></li>
+            </ul>
+          `
           });
 
-          // Add methodology notes based on selected methodology
+          // Add methodology notes
           steps.push({
             id: "methodology",
             title: "Methodology Notes",
             content: getMethodologyDetails(selectedMethodology)
           });
 
-          // Calculate emissions equivalences
+          // Calculate emissions equivalencies
           const equivalencies = {
             carsPerYear: Math.round(totalEmissions * 4.6),
             homeEnergyForDays: Math.round(totalEmissions * 120),
@@ -566,19 +1264,18 @@ const EmissionsCalculationProcess = () => {
             id: "equivalencies",
             title: "Emissions Equivalencies",
             content: `
-              <p>Understanding the scale of these emissions through equivalencies:</p>
-              <ul>
-                <li>${equivalencies.carsPerYear} passenger cars driven for one year</li>
-                <li>${equivalencies.homeEnergyForDays} days of home energy use</li>
-                <li>${equivalencies.smartphonesCharged.toLocaleString()} smartphones charged</li>
-                <li>${equivalencies.treesNeededForYear} trees growing for one year to sequester this carbon</li>
-                <li>${equivalencies.recycledWasteInKg.toLocaleString()} kg of waste recycled instead of landfilled</li>
-                <li>$${equivalencies.offsetCostUSD.toLocaleString()} to offset through carbon credit projects</li>
-              </ul>
-            `
+            <p>Understanding the scale of these emissions through equivalencies:</p>
+            <ul>
+              <li>${equivalencies.carsPerYear} passenger cars driven for one year</li>
+              <li>${equivalencies.homeEnergyForDays} days of home energy use</li>
+              <li>${equivalencies.smartphonesCharged.toLocaleString()} smartphones charged</li>
+              <li>${equivalencies.treesNeededForYear} trees growing for one year to sequester this carbon</li>
+              <li>${equivalencies.recycledWasteInKg.toLocaleString()} kg of waste recycled instead of landfilled</li>
+              <li>$${equivalencies.offsetCostUSD.toLocaleString()} to offset through carbon credit projects</li>
+            </ul>
+          `
           });
 
-          // Final result
           result = {
             totalEmissions,
             emissionsPerPassenger,
@@ -586,7 +1283,7 @@ const EmissionsCalculationProcess = () => {
             adjustedDistance: finalAdjustedDistance,
             flightType: convertFlightTypeFormat(flightType),
             baseEmissionsPerKm,
-            emissionsPerKm,
+            emissionsPerKm: totalEmissions / finalAdjustedDistance,
             isRoundTrip,
             passengers,
             capacity,
@@ -604,202 +1301,12 @@ const EmissionsCalculationProcess = () => {
             methodology: selectedMethodology,
             fuel: totalFuelKg
           };
-        } else {
-          // No aircraft selected, use default calculation method
-          addDebugLog("No specific aircraft selected, using default ICAO methodology");
-
-          // Step 4: Default calculation method
-          steps.push({
-            id: "defaultMethod",
-            title: "Step 4: Default Calculation Method",
-            content: `
-              <p>No specific aircraft selected. Using standard ${selectedMethodology} methodology for aviation emissions.</p>
-              <ul>
-                <li>Calibrated Emissions Factor: ${getCalibrationFactor(selectedMethodology)} tonnes CO₂ per km</li>
-                <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
-                <li>Adjusted Distance: ${adjustedDistance.toFixed(2)} km</li>
-              </ul>
-            `
-          });
-
-          // Step 5: Emissions adjustment based on flight type
-          const CALIBRATED_EMISSIONS_FACTOR = getCalibrationFactor(selectedMethodology);
-          const emissionsAdjustment = getEmissionsAdjustment(flightType);
-
-          addDebugLog(`Applied emissions adjustment for ${flightType}: ${emissionsAdjustment}`);
-
-          steps.push({
-            id: "emissionsAdjustment",
-            title: "Step 5: Distance-Based Emissions Adjustment",
-            content: `
-              <p>Adjusting emissions factor based on flight distance category:</p>
-              <ul>
-                <li>Base Emissions Factor: ${CALIBRATED_EMISSIONS_FACTOR} tonnes CO₂/km</li>
-                <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
-                <li>Distance Adjustment Factor: ${emissionsAdjustment.toFixed(2)}</li>
-                <li>Adjusted Emissions Factor: ${(CALIBRATED_EMISSIONS_FACTOR * emissionsAdjustment).toFixed(5)} tonnes CO₂/km</li>
-              </ul>
-              <p class="text-xs text-gray-400 mt-2">Note: Short flights have higher emissions per km due to the disproportionate fuel consumption during takeoff and landing. Long flights are more fuel-efficient per km once at cruising altitude.</p>
-            `
-          });
-
-          // Step 6: Load factor calculation
-          const defaultCapacity = getDefaultCapacity(flightType);
-          const loadFactor = Math.min(passengers / defaultCapacity, 1);
-          const loadFactorAdjustment = calculateDefaultLoadFactorAdjustment(loadFactor);
-
-          addDebugLog(`Applied load factor adjustment: ${loadFactorAdjustment.toFixed(3)}`);
-
-          steps.push({
-            id: "loadFactor",
-            title: "Step 6: Load Factor Adjustment",
-            content: `
-              <p>Adjusting emissions based on passenger load:</p>
-              <ul>
-                <li>Number of Passengers: ${passengers}</li>
-                <li>Default Aircraft Capacity for ${convertFlightTypeFormat(flightType)}: ${defaultCapacity}</li>
-                <li>Load Factor: ${(loadFactor * 100).toFixed(1)}%</li>
-                <li>Fixed Emissions Ratio: 80%</li>
-                <li>Variable Emissions Ratio: 20%</li>
-                <li>Load Factor Adjustment: ${loadFactorAdjustment.toFixed(3)}</li>
-              </ul>
-              <p class="text-xs text-gray-400 mt-2">Note: Standard methodology suggests that about 80% of emissions are fixed regardless of passenger count, with 20% varying based on load.</p>
-            `
-          });
-
-          // Step 7: Calculate base emissions
-          const baseEmissionsPerKm = CALIBRATED_EMISSIONS_FACTOR * emissionsAdjustment;
-          const emissionsPerKm = baseEmissionsPerKm * loadFactorAdjustment;
-
-          addDebugLog(`Calculated emissions rate: ${(emissionsPerKm * 1000).toFixed(2)} kg CO₂/km`);
-
-          // Step 8: Apply radiative forcing index (RFI)
-          const rfi = calculateRFI(flightType);
-          let totalEmissions = adjustedDistance * emissionsPerKm * rfi;
-
-          addDebugLog(`Applied RFI factor: ${rfi}`);
-
-          steps.push({
-            id: "rfi",
-            title: "Step 7: Radiative Forcing Index",
-            content: `
-              <p>Accounting for non-CO₂ climate effects using Radiative Forcing Index (RFI):</p>
-              <ul>
-                <li>Flight Type: ${convertFlightTypeFormat(flightType)}</li>
-                <li>RFI Factor: ${rfi}</li>
-                <li>Base Emissions per km: ${(baseEmissionsPerKm * 1000).toFixed(4)} kg CO₂/km</li>
-                <li>Load-adjusted Emissions per km: ${(emissionsPerKm * 1000).toFixed(4)} kg CO₂/km</li>
-                <li>RFI-adjusted Emissions per km: ${(emissionsPerKm * rfi * 1000).toFixed(4)} kg CO₂/km</li>
-                <li>Adjusted Distance: ${adjustedDistance.toFixed(2)} km</li>
-                <li>One-way Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</li>
-              </ul>
-              <p class="text-xs text-gray-400 mt-2">Note: The Radiative Forcing Index accounts for additional warming effects from aviation emissions at altitude, including nitrogen oxides, water vapor, and contrails.</p>
-            `
-          });
-
-          // Step 9: Round trip calculation
-          const oneWayEmissions = totalEmissions;
-          const finalDistance = isRoundTrip ? distance * 2 : distance;
-          const finalAdjustedDistance = isRoundTrip ? adjustedDistance * 2 : adjustedDistance;
-
-          if (isRoundTrip) {
-            totalEmissions *= 2;
-          }
-
-          addDebugLog(`Calculated ${isRoundTrip ? 'round-trip' : 'one-way'} emissions: ${totalEmissions.toFixed(3)} tonnes`);
-
-          steps.push({
-            id: "roundTrip",
-            title: "Step 8: Trip Type Calculation",
-            content: `
-              <p>Calculating final emissions based on trip type:</p>
-              <ul>
-                <li>Trip Type: ${isRoundTrip ? "Round Trip" : "One Way"}</li>
-                <li>One-way Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>
-                ${isRoundTrip ? `<li>Return Journey Emissions: ${oneWayEmissions.toFixed(3)} tonnes CO₂</li>` : ''}
-                <li>Final Raw Distance: ${finalDistance.toFixed(2)} km</li>
-                <li>Final Adjusted Distance: ${finalAdjustedDistance.toFixed(2)} km</li>
-                <li><strong>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</strong></li>
-              </ul>
-            `
-          });
-
-          // Step 10: Per passenger calculation
-          const emissionsPerPassenger = totalEmissions / passengers;
-
-          steps.push({
-            id: "perPassenger",
-            title: "Step 9: Per Passenger Emissions",
-            content: `
-              <p>Calculating per-passenger emissions:</p>
-              <ul>
-                <li>Total Emissions: ${totalEmissions.toFixed(3)} tonnes CO₂</li>
-                <li>Number of Passengers: ${passengers}</li>
-                <li><strong>Emissions per Passenger: ${emissionsPerPassenger.toFixed(3)} tonnes CO₂</strong></li>
-              </ul>
-            `
-          });
-
-          // Add methodology notes based on selected methodology
-          steps.push({
-            id: "methodology",
-            title: "Methodology Notes",
-            content: getMethodologyDetails(selectedMethodology)
-          });
-
-          // Calculate emissions equivalences
-          const equivalencies = {
-            carsPerYear: Math.round(totalEmissions * 4.6),
-            homeEnergyForDays: Math.round(totalEmissions * 120),
-            smartphonesCharged: Math.round(totalEmissions * 121643),
-            treesNeededForYear: Math.round(totalEmissions * 16.5),
-            recycledWasteInKg: Math.round(totalEmissions * 1200),
-            offsetCostUSD: Math.round(totalEmissions * 13.5)
-          };
-
-          steps.push({
-            id: "equivalencies",
-            title: "Emissions Equivalencies",
-            content: `
-              <p>Understanding the scale of these emissions through equivalencies:</p>
-              <ul>
-                <li>${equivalencies.carsPerYear} passenger cars driven for one year</li>
-                <li>${equivalencies.homeEnergyForDays} days of home energy use</li>
-                <li>${equivalencies.smartphonesCharged.toLocaleString()} smartphones charged</li>
-                <li>${equivalencies.treesNeededForYear} trees growing for one year to sequester this carbon</li>
-                <li>${equivalencies.recycledWasteInKg.toLocaleString()} kg of waste recycled instead of landfilled</li>
-                <li>${equivalencies.offsetCostUSD.toLocaleString()} to offset through carbon credit projects</li>
-              </ul>
-            `
-          });
-
-          result = {
-            totalEmissions,
-            emissionsPerPassenger,
-            distanceKm: finalDistance,
-            adjustedDistance: finalAdjustedDistance,
-            flightType: convertFlightTypeFormat(flightType),
-            baseEmissionsPerKm,
-            emissionsPerKm,
-            isRoundTrip,
-            passengers,
-            capacity: defaultCapacity,
-            loadFactor,
-            loadFactorAdjustment,
-            radiativeForcingIndex: rfi,
-            co2Factor: 3.16,
-            aircraft: null,
-            homeAirport,
-            awayAirport,
-            equivalencies,
-            methodology: selectedMethodology
-          };
         }
 
         setCalculationSteps(steps);
         setCalculationResult(result);
         setExpandedSections({
-          distance: true, // Auto-expand first section
+          distance: true,
           flightType: false,
           routeCorrection: false
         });
@@ -826,7 +1333,8 @@ const EmissionsCalculationProcess = () => {
         setIsCalculating(false);
       }
     }, 800);
-  };
+  }
+
 
   // Calculate emissions using alternative methodologies for comparison
   const calculateAlternativeMethodologies = (distance, adjustedDistance, passengers, isRoundTrip, flightType, currentResult) => {

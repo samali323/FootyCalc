@@ -2,9 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Sidebar } from "@/components/sidebar"
-import { AuthProvider } from "@/components/auth/auth-provider"
+import LandingLayout from "./landing-layout"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -20,20 +18,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="dark">
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <AuthProvider>
-            <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
-              <Sidebar />
-              <main className="flex-1 overflow-y-auto p-6 lg:pl-6">
-                <div className="mx-auto max-w-7xl">
-                  {children}
-                </div>
-              </main>
-            </div>
-          </AuthProvider>
-        </ThemeProvider>
+          <LandingLayout>
+            {children}
+          </LandingLayout>
       </body>
     </html>
   )

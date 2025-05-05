@@ -16,6 +16,7 @@ import {
   Battery
 } from 'lucide-react';
 import { supabase } from "@/lib/supabase/client";
+import { calculateEmissionsBetweenAirports } from "@/lib/icaoCalculations";
 const geocodeCity = async (city) => {
   // Mock implementation - replace with actual geocoding service
   console.log(`Geocoding city: ${city}`);
@@ -424,104 +425,250 @@ const EmissionsCalculator = () => {
 
     return DISTANCE_EMISSIONS_ADJUSTMENT[flightType];
   }
+  // const handleCalculate = () => {
+  //   // Reset validation states
+  //   setValidationErrors({});
+
+  //   // Validate inputs
+  //   const errors = {};
+
+  //   if (!homeAirport) {
+  //     errors.homeAirport = 'Please select a home airport';
+  //   }
+
+  //   if (!awayAirport) {
+  //     errors.awayAirport = 'Please select an away airport';
+  //   }
+
+  //   if (homeAirport && awayAirport && homeAirport.id === awayAirport.id) {
+  //     errors.sameAirport = 'Home and away airports cannot be the same';
+  //   }
+
+  //   if (passengers < 1) {
+  //     errors.passengers = 'At least one passenger is required';
+  //   }
+
+  //   // If there are validation errors, display them and return
+  //   if (Object.keys(errors).length > 0) {
+  //     setValidationErrors(errors);
+  //     return;
+  //   }
+
+  //   setIsCalculating(true);
+  //   setShowSuccessMessage(true);
+
+  //   // Hide success message after 3 seconds
+  //   setTimeout(() => {
+  //     setShowSuccessMessage(false);
+  //   }, 3000);
+
+  //   // Simulate API calculation delay
+  //   setTimeout(() => {
+  //     // Calculate distance between airports using the same approach as icaoCalculations.ts
+  //     const distance = calculateDistance(
+  //       homeAirport.latitude, homeAirport.longitude,
+  //       awayAirport.latitude, awayAirport.longitude
+  //     );
+
+  //     // Using constants and functions from icaoCalculations.ts
+  //     const CALIBRATED_EMISSIONS_FACTOR = 0.0291; // tons CO2 per km (round trip)
+  //     const flightType = determineFlightType(distance);
+
+  //     // Calculate emissions
+  //     let result;
+
+  //     if (aircraftRegistration && aircraft_database[aircraftRegistration]) {
+  //       // If aircraft is selected, use the detailed calculation method
+  //       result = calculateEmissionsWithAircraft(
+  //         distance,
+  //         isRoundTrip,
+  //         passengers,
+  //         aircraftRegistration,
+  //         homeAirport,
+  //         awayAirport
+  //       );
+  //     } else {
+  //       // If no aircraft is selected, use the approach from icaoCalculations.ts
+  //       result = calculateSportsEmissions(distance, isRoundTrip, passengers);
+
+  //       // Add additional information to match the expected response format
+  //       result.homeAirport = homeAirport;
+  //       result.awayAirport = awayAirport;
+  //       result.aircraft = null;
+
+  //       // Add equivalencies
+  //       result.equivalencies = {
+  //         carsPerYear: Math.round(result.totalEmissions * 4.6),
+  //         homeEnergyForDays: Math.round(result.totalEmissions * 120),
+  //         smartphonesCharged: Math.round(result.totalEmissions * 121643),
+  //         treesNeededForYear: Math.round(result.totalEmissions * 16.5),
+  //         recycledWasteInKg: Math.round(result.totalEmissions * 1200),
+  //         offsetCostUSD: Math.round(result.totalEmissions * 13.5)
+  //       };
+
+  //       result.methodology = "ICAO";
+  //     }
+
+  //     setResults(result);
+
+  //     // Generate efficiency comparison data
+  //     const comparison = getAircraftEfficiencyComparison(result.adjustedDistance);
+  //     setEfficiencyComparison(comparison);
+
+  //     setTimeout(() => {
+  //       calculateFootballTeamAlternatives();
+  //       setIsCalculating(false);
+  //     }, 100);
+  //   }, 800);
+  // };
+
   const handleCalculate = () => {
     // Reset validation states
     setValidationErrors({});
-
     // Validate inputs
     const errors = {};
-
     if (!homeAirport) {
       errors.homeAirport = 'Please select a home airport';
     }
-
     if (!awayAirport) {
       errors.awayAirport = 'Please select an away airport';
     }
-
     if (homeAirport && awayAirport && homeAirport.id === awayAirport.id) {
       errors.sameAirport = 'Home and away airports cannot be the same';
     }
-
     if (passengers < 1) {
       errors.passengers = 'At least one passenger is required';
     }
-
     // If there are validation errors, display them and return
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       return;
     }
-
     setIsCalculating(true);
     setShowSuccessMessage(true);
-
     // Hide success message after 3 seconds
     setTimeout(() => {
       setShowSuccessMessage(false);
     }, 3000);
-
     // Simulate API calculation delay
     setTimeout(() => {
-      // Calculate distance between airports using the same approach as icaoCalculations.ts
+      // Calculate distance between airports
       const distance = calculateDistance(
         homeAirport.latitude, homeAirport.longitude,
         awayAirport.latitude, awayAirport.longitude
       );
-
-      // Using constants and functions from icaoCalculations.ts
-      const CALIBRATED_EMISSIONS_FACTOR = 0.0291; // tons CO2 per km (round trip)
-      const flightType = determineFlightType(distance);
-
-      // Calculate emissions
       let result;
-
-      if (aircraftRegistration && aircraft_database[aircraftRegistration]) {
-        // If aircraft is selected, use the detailed calculation method
-        result = calculateEmissionsWithAircraft(
-          distance,
-          isRoundTrip,
+      if (!aircraftRegistration || !aircraft_database[aircraftRegistration]) {
+        // Use the exact same method as the first file when no aircraft is selected
+        result = calculateEmissionsBetweenAirports(homeAirport, awayAirport, isRoundTrip);
+        // Add additional fields to match the expected format
+        result = {
+          ...result,
+          emissionsPerPassenger: result.totalEmissions / passengers,
           passengers,
-          aircraftRegistration,
+          capacity: getDefaultCapacity(determineFlightType(distance)),
+          loadFactor: passengers / getDefaultCapacity(determineFlightType(distance)),
+          loadFactorAdjustment: 1.0, // No load factor adjustment in first file
+          radiativeForcingIndex: 1.0, // No RFI in first file
+          co2Factor: 3.16,
+          aircraft: null,
           homeAirport,
-          awayAirport
-        );
-      } else {
-        // If no aircraft is selected, use the approach from icaoCalculations.ts
-        result = calculateSportsEmissions(distance, isRoundTrip, passengers);
-
-        // Add additional information to match the expected response format
-        result.homeAirport = homeAirport;
-        result.awayAirport = awayAirport;
-        result.aircraft = null;
-
-        // Add equivalencies
-        result.equivalencies = {
-          carsPerYear: Math.round(result.totalEmissions * 4.6),
-          homeEnergyForDays: Math.round(result.totalEmissions * 120),
-          smartphonesCharged: Math.round(result.totalEmissions * 121643),
-          treesNeededForYear: Math.round(result.totalEmissions * 16.5),
-          recycledWasteInKg: Math.round(result.totalEmissions * 1200),
-          offsetCostUSD: Math.round(result.totalEmissions * 13.5)
+          awayAirport,
+          equivalencies: {
+            carsPerYear: Math.round(result.totalEmissions * 4.6),
+            homeEnergyForDays: Math.round(result.totalEmissions * 120),
+            smartphonesCharged: Math.round(result.totalEmissions * 121643),
+            treesNeededForYear: Math.round(result.totalEmissions * 16.5),
+            recycledWasteInKg: Math.round(result.totalEmissions * 1200),
+            offsetCostUSD: Math.round(result.totalEmissions * 13.5)
+          },
+          methodology: "ICAO"
         };
-
-        result.methodology = "ICAO";
+      } else {
+        // Calculate emissions with aircraft-specific logic
+        result = calculateEmissionsWithAircraft(distance, isRoundTrip, passengers, aircraftRegistration, homeAirport, awayAirport);
       }
-
       setResults(result);
-
       // Generate efficiency comparison data
       const comparison = getAircraftEfficiencyComparison(result.adjustedDistance);
       setEfficiencyComparison(comparison);
-
       setTimeout(() => {
         calculateFootballTeamAlternatives();
         setIsCalculating(false);
       }, 100);
     }, 800);
   };
-
-
+  // Updated calculateEmissionsWithAircraft to align with first file's methodology
+  function calculateEmissionsWithAircraft(
+    distance: number,
+    isRoundTrip: boolean,
+    passengers: number,
+    aircraftRegistration: string,
+    homeAirport: any,
+    awayAirport: any
+  ): any {
+    const aircraft = aircraft_database[aircraftRegistration];
+    const flightType = determineFlightType(distance);
+    const adjustedDistance = applyRouteCorrection(distance, flightType);
+    // Get aircraft model details
+    const aircraftModel = aircraft.model;
+    const capacity = aircraftCapacity[aircraftModel] || 150;
+    // Calculate load factor adjustment (same as before)
+    const loadFactorAdjustment = calculateLoadFactorAdjustment(passengers, aircraftModel);
+    // Calculate fuel burn using ICAO method
+    const totalFuelKg = calculateFuelBurn(aircraft, adjustedDistance, flightType);
+    // Convert fuel to emissions using ICAO standard factor
+    const co2Factor = 3.16; // ICAO standard: 3.16 kg CO2 per kg of jet fuel
+    let totalEmissions = (totalFuelKg * co2Factor) / 1000; // tonnes
+    // Apply load factor adjustment
+    totalEmissions *= loadFactorAdjustment;
+    // Note: Remove RFI to align with first file (first file doesn't apply RFI)
+    // const rfi = calculateRFI(flightType);
+    // totalEmissions *= rfi;
+    // Account for round trip
+    const finalDistance = isRoundTrip ? distance * 2 : distance;
+    const finalAdjustedDistance = isRoundTrip ? adjustedDistance * 2 : adjustedDistance;
+    if (isRoundTrip) {
+      totalEmissions *= 2;
+    }
+    // Calculate per-passenger emissions
+    const emissionsPerPassenger = totalEmissions / passengers;
+    // Calculate base emissions per km (for display purposes)
+    const CALIBRATED_EMISSIONS_FACTOR = 0.0291; // tons CO2 per km (round trip)
+    const emissionsAdjustment = getEmissionsAdjustment(flightType);
+    const baseEmissionsPerKm = CALIBRATED_EMISSIONS_FACTOR * emissionsAdjustment;
+    return {
+      totalEmissions,
+      emissionsPerPassenger,
+      distanceKm: finalDistance,
+      adjustedDistance: finalAdjustedDistance,
+      flightType: convertFlightTypeFormat(flightType),
+      baseEmissionsPerKm,
+      emissionsPerKm: totalEmissions / finalAdjustedDistance, // Adjusted for display
+      isRoundTrip,
+      passengers,
+      capacity,
+      loadFactor: passengers / capacity,
+      loadFactorAdjustment,
+      radiativeForcingIndex: 1.0, // No RFI to match first file
+      co2Factor,
+      aircraft: {
+        registration: aircraftRegistration,
+        model: aircraftModel
+      },
+      homeAirport,
+      awayAirport,
+      equivalencies: {
+        carsPerYear: Math.round(totalEmissions * 4.6),
+        homeEnergyForDays: Math.round(totalEmissions * 120),
+        smartphonesCharged: Math.round(totalEmissions * 121643),
+        treesNeededForYear: Math.round(totalEmissions * 16.5),
+        recycledWasteInKg: Math.round(totalEmissions * 1200),
+        offsetCostUSD: Math.round(totalEmissions * 13.5)
+      },
+      methodology: "ICAO"
+    };
+  }
   useEffect(() => {
     // calculateAlternatives();
     calculateFootballTeamAlternatives();
@@ -894,86 +1041,86 @@ const EmissionsCalculator = () => {
       co2Factor: 3.16 // Standard ICAO conversion factor
     };
   }
-  function calculateEmissionsWithAircraft(
-    distance,
-    isRoundTrip,
-    passengers,
-    aircraftRegistration,
-    homeAirport,
-    awayAirport
-  ) {
-    const aircraft = aircraft_database[aircraftRegistration];
-    const flightType = determineFlightType(distance);
-    const adjustedDistance = applyRouteCorrection(distance, flightType);
+  // function calculateEmissionsWithAircraft(
+  //   distance,
+  //   isRoundTrip,
+  //   passengers,
+  //   aircraftRegistration,
+  //   homeAirport,
+  //   awayAirport
+  // ) {
+  //   const aircraft = aircraft_database[aircraftRegistration];
+  //   const flightType = determineFlightType(distance);
+  //   const adjustedDistance = applyRouteCorrection(distance, flightType);
 
-    // Get aircraft model details
-    const aircraftModel = aircraft.model;
-    const capacity = aircraftCapacity[aircraftModel] || 150;
+  //   // Get aircraft model details
+  //   const aircraftModel = aircraft.model;
+  //   const capacity = aircraftCapacity[aircraftModel] || 150;
 
-    // Calculate load factor adjustment
-    const loadFactorAdjustment = calculateLoadFactorAdjustment(passengers, aircraftModel);
+  //   // Calculate load factor adjustment
+  //   const loadFactorAdjustment = calculateLoadFactorAdjustment(passengers, aircraftModel);
 
-    // Calculate fuel burn using ICAO method
-    const totalFuelKg = calculateFuelBurn(aircraft, adjustedDistance, flightType);
+  //   // Calculate fuel burn using ICAO method
+  //   const totalFuelKg = calculateFuelBurn(aircraft, adjustedDistance, flightType);
 
-    // Convert fuel to emissions using ICAO standard factor
-    const co2Factor = 3.16; // ICAO standard: 3.16 kg CO2 per kg of jet fuel
-    const rawEmissions = totalFuelKg * co2Factor / 1000; // tonnes
+  //   // Convert fuel to emissions using ICAO standard factor
+  //   const co2Factor = 3.16; // ICAO standard: 3.16 kg CO2 per kg of jet fuel
+  //   const rawEmissions = totalFuelKg * co2Factor / 1000; // tonnes
 
-    // Calculate per-km emissions
-    const baseEmissionsPerKm = rawEmissions / adjustedDistance;
-    const emissionsPerKm = baseEmissionsPerKm * loadFactorAdjustment;
+  //   // Calculate per-km emissions
+  //   const baseEmissionsPerKm = rawEmissions / adjustedDistance;
+  //   const emissionsPerKm = baseEmissionsPerKm * loadFactorAdjustment;
 
-    // Apply RFI factor
-    const rfi = calculateRFI(flightType);
-    let totalEmissions = emissionsPerKm * adjustedDistance * rfi;
+  //   // Apply RFI factor
+  //   const rfi = calculateRFI(flightType);
+  //   let totalEmissions = emissionsPerKm * adjustedDistance * rfi;
 
-    // Account for round trip
-    const finalDistance = isRoundTrip ? distance * 2 : distance;
-    const finalAdjustedDistance = isRoundTrip ? adjustedDistance * 2 : adjustedDistance;
+  //   // Account for round trip
+  //   const finalDistance = isRoundTrip ? distance * 2 : distance;
+  //   const finalAdjustedDistance = isRoundTrip ? adjustedDistance * 2 : adjustedDistance;
 
-    if (isRoundTrip) {
-      totalEmissions *= 2;
-    }
+  //   if (isRoundTrip) {
+  //     totalEmissions *= 2;
+  //   }
 
-    // Calculate per-passenger emissions
-    const emissionsPerPassenger = totalEmissions / passengers;
+  //   // Calculate per-passenger emissions
+  //   const emissionsPerPassenger = totalEmissions / passengers;
 
-    // Calculate equivalencies
-    const equivalencies = {
-      carsPerYear: Math.round(totalEmissions * 4.6),
-      homeEnergyForDays: Math.round(totalEmissions * 120),
-      smartphonesCharged: Math.round(totalEmissions * 121643),
-      treesNeededForYear: Math.round(totalEmissions * 16.5),
-      recycledWasteInKg: Math.round(totalEmissions * 1200),
-      offsetCostUSD: Math.round(totalEmissions * 13.5)
-    };
+  //   // Calculate equivalencies
+  //   const equivalencies = {
+  //     carsPerYear: Math.round(totalEmissions * 4.6),
+  //     homeEnergyForDays: Math.round(totalEmissions * 120),
+  //     smartphonesCharged: Math.round(totalEmissions * 121643),
+  //     treesNeededForYear: Math.round(totalEmissions * 16.5),
+  //     recycledWasteInKg: Math.round(totalEmissions * 1200),
+  //     offsetCostUSD: Math.round(totalEmissions * 13.5)
+  //   };
 
-    return {
-      totalEmissions,
-      emissionsPerPassenger,
-      distanceKm: finalDistance,
-      adjustedDistance: finalAdjustedDistance,
-      flightType: convertFlightTypeFormat(flightType),
-      baseEmissionsPerKm,
-      emissionsPerKm,
-      isRoundTrip,
-      passengers,
-      capacity,
-      loadFactor: passengers / capacity,
-      loadFactorAdjustment,
-      radiativeForcingIndex: rfi,
-      co2Factor,
-      aircraft: {
-        registration: aircraftRegistration,
-        model: aircraftModel
-      },
-      homeAirport,
-      awayAirport,
-      equivalencies,
-      methodology: "ICAO"
-    };
-  }
+  //   return {
+  //     totalEmissions,
+  //     emissionsPerPassenger,
+  //     distanceKm: finalDistance,
+  //     adjustedDistance: finalAdjustedDistance,
+  //     flightType: convertFlightTypeFormat(flightType),
+  //     baseEmissionsPerKm,
+  //     emissionsPerKm,
+  //     isRoundTrip,
+  //     passengers,
+  //     capacity,
+  //     loadFactor: passengers / capacity,
+  //     loadFactorAdjustment,
+  //     radiativeForcingIndex: rfi,
+  //     co2Factor,
+  //     aircraft: {
+  //       registration: aircraftRegistration,
+  //       model: aircraftModel
+  //     },
+  //     homeAirport,
+  //     awayAirport,
+  //     equivalencies,
+  //     methodology: "ICAO"
+  //   };
+  // }
 
   function calculateFuelBurn(aircraft, adjustedDistance, flightType) {
     let fuelBurnRateAdjusted = aircraft.fuel_burn_rate_kg_per_hour;
