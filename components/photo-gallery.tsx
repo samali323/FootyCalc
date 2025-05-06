@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,23 @@ import { X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react"
 export function PhotoGallery() {
   const [selectedImage, setSelectedImage] = useState<number | null>(null)
   const [category, setCategory] = useState("all")
+
+  // Add state and effect to disable scroll and hide header
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+      document.querySelector('header')?.classList.add('hidden');
+    } else {
+      document.body.style.overflow = 'auto';
+      document.querySelector('header')?.classList.remove('hidden');
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.querySelector('header')?.classList.remove('hidden');
+    };
+  }, [isModalOpen]);
 
   const images = [
     {
@@ -135,7 +152,10 @@ export function PhotoGallery() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
             className="relative group overflow-hidden rounded-lg cursor-pointer"
-            onClick={() => setSelectedImage(image.id)}
+            onClick={() => {
+              setSelectedImage(image.id)
+              setIsModalOpen(true)
+            }}
           >
             <div className="aspect-square relative overflow-hidden rounded-lg">
               <Image
@@ -158,51 +178,78 @@ export function PhotoGallery() {
         ))}
       </div>
 
-      {/* Lightbox */}
+      {/* Lightbox - Updated with lighter background and more prominent controls */}
       <AnimatePresence>
-        {selectedImage !== null && (
+        {selectedImage !== null && isModalOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-            onClick={() => setSelectedImage(null)}
+            className="fixed inset-0 z-[9999] bg-white/75 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => {
+              setSelectedImage(null)
+              setIsModalOpen(false)
+            }}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-4 right-4 z-10 bg-black/50 text-white hover:bg-black/70"
-              onClick={(e) => {
-                e.stopPropagation()
-                setSelectedImage(null)
-              }}
+            {/* Close button - More prominent */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="absolute top-4 right-4 z-20"
             >
-              <X className="h-6 w-6" />
-            </Button>
+              <Button
+                variant="default"
+                size="icon"
+                className="rounded-full bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedImage(null)
+                  setIsModalOpen(false)
+                }}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </motion.div>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white hover:bg-black/70"
-              onClick={(e) => {
-                e.stopPropagation()
-                handlePrev()
-              }}
+            {/* Left navigation - More prominent */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-20"
             >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
+              <Button
+                variant="default"
+                size="icon"
+                className="rounded-full bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg h-12 w-12"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePrev()
+                }}
+              >
+                <ChevronLeft className="h-8 w-8" />
+              </Button>
+            </motion.div>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white hover:bg-black/70"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleNext()
-              }}
+            {/* Right navigation - More prominent */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-20"
             >
-              <ChevronRight className="h-6 w-6" />
-            </Button>
+              <Button
+                variant="default"
+                size="icon"
+                className="rounded-full bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg h-12 w-12"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleNext()
+                }}
+              >
+                <ChevronRight className="h-8 w-8" />
+              </Button>
+            </motion.div>
 
             {filteredImages
               .filter((img) => img.id === selectedImage)
@@ -213,7 +260,7 @@ export function PhotoGallery() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.3 }}
-                  className="relative max-w-4xl max-h-[80vh] w-full"
+                  className="relative max-w-5xl max-h-[85vh] w-full bg-white/10 backdrop-blur-md rounded-xl overflow-hidden shadow-2xl border border-white/20"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="relative aspect-video">
@@ -225,11 +272,16 @@ export function PhotoGallery() {
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 75vw, 50vw"
                     />
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-4">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="absolute bottom-0 left-0 right-0 bg-black/70 p-4 backdrop-blur-sm"
+                  >
                     <Badge className="mb-2 bg-blue-500">{image.category}</Badge>
                     <h2 className="text-xl font-semibold text-white mb-1">{image.title}</h2>
                     <p className="text-gray-200">{image.description}</p>
-                  </div>
+                  </motion.div>
                 </motion.div>
               ))}
           </motion.div>

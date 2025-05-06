@@ -19,6 +19,8 @@ import {
   ZoomOut,
   RotateCw,
   LogIn,
+  FileText,
+  ChevronDown,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useAuth } from "./auth/auth-provider"
@@ -30,7 +32,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Cropper from "react-easy-crop"
 import type { Point, Area } from "react-easy-crop"
 import { supabase } from "@/lib/supabase/client"
-
+import bydefault from "../public/pictures/picture-profile-icon-male-icon-human-or-people-sign-and-symbol-free-vector.jpg"
+import { BlogPost } from "./blog-card"
 // Define Area type for cropping
 type Area = {
   x: number;
@@ -128,6 +131,7 @@ function combineNames(firstName?: string, lastName?: string): string {
 // Interface for component props
 interface AnimatedHeaderProps {
   scrollToSection?: (section: string) => void
+  blogPosts?: BlogPost[]; // Prop for checking blogs
 }
 
 // Function to crop image
@@ -226,18 +230,20 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
   // Handle scroll behavior
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY
-      setIsAtTop(currentScrollY < 10)
-      if (currentScrollY < lastScrollY) {
-        setIsScrollingUp(true)
-      } else if (currentScrollY > 50 && currentScrollY > lastScrollY) {
-        setIsScrollingUp(false)
+      const currentScrollY = window.scrollY;
+      setIsAtTop(currentScrollY < 10);
+      if (!mobileMenuOpen) { // Disable scroll hide only when menu is open
+        if (currentScrollY < lastScrollY) {
+          setIsScrollingUp(true);
+        } else if (currentScrollY > 50 && currentScrollY > lastScrollY) {
+          setIsScrollingUp(false);
+        }
       }
-      setLastScrollY(currentScrollY)
-    }
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [lastScrollY])
+      setLastScrollY(currentScrollY);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY, mobileMenuOpen]);
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen)
@@ -245,17 +251,17 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
 
   const handleTabClick = (tabId: string) => {
     setActiveTab(tabId)
-    if (scrollToSection) {
+    if (scrollToSection && tabId !== "dashboard") {
       scrollToSection(tabId)
     }
   }
 
-  const handleDropdownItemClick = (tabId: string, dropdownItem: string) => {
-    setActiveTab(tabId)
-    if (scrollToSection) {
-      scrollToSection(`${tabId}-${dropdownItem.toLowerCase()}`)
-    }
-  }
+  // const handleDropdownItemClick = (tabId: string, dropdownItem: string) => {
+  //   setActiveTab(tabId)
+  //   if (scrollToSection) {
+  //     scrollToSection(`${tabId}-${dropdownItem.toLowerCase()}`)
+  //   }
+  // }
 
   const onCropComplete = useCallback(
     (croppedArea: Area, croppedAreaPixels: Area) => {
@@ -388,6 +394,10 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
     setCropShape(shape)
   }
 
+  const handleDropdownItemClick = (tabId: string, dropdownItem: string) => {
+    setActiveTab(tabId)
+  }
+
   const navItems = [
     {
       id: "leagues",
@@ -406,6 +416,12 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
       name: "Clubs",
       icon: <Users className="h-4 w-4 mr-1" />,
       activeColor: "text-amber-400",
+    },
+    {
+      id: "blogs",
+      name: "Blogs",
+      icon: <FileText className="h-4 w-4 mr-1" />,
+      activeColor: "text-orange-400",
     },
     {
       id: "sustainability",
@@ -449,7 +465,7 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
             <div className="h-1 w-full bg-gradient-to-r from-emerald-500 via-blue-500 to-emerald-500 animate-gradient"></div>
             <div className="container mx-auto px-4">
               <div className="flex items-center justify-between h-16 md:h-20">
-                <Link href="/" className="flex items-center space-x-2">
+                <div onClick={() => scrollToSection && scrollToSection("Hero")} className="flex items-center space-x-2">
                   <div className="relative h-10 w-10 md:h-12 md:w-12">
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full opacity-80 animate-pulse"></div>
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -462,7 +478,7 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                     </h1>
                     <p className="text-xs text-gray-400 hidden md:block">Tracking the carbon footprint of sports</p>
                   </div>
-                </Link>
+                </div>
 
                 <nav className="hidden md:flex items-center space-x-1">
                   {navItems.map((item) => (
@@ -474,22 +490,7 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                       >
                         <span className={activeTab === item.id ? item.activeColor : "text-gray-400"}>{item.icon}</span>
                         {item.name}
-                        {item.hasDropdown && (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="ml-1 h-4 w-4 opacity-70"
-                          >
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                          </svg>
-                        )}
+                        {item.hasDropdown && <ChevronDown className="ml-1 h-4 w-4 opacity-70" />}
                       </Button>
 
                       {item.hasDropdown && (
@@ -509,7 +510,6 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                           </div>
                         </div>
                       )}
-
                     </div>
                   ))}
                 </nav>
@@ -526,7 +526,7 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                         className="rounded-full p-0 h-10 w-10 overflow-hidden border-2 border-emerald-500"
                       >
                         <Image
-                          src={profilePic || "/placeholder.svg?height=100&width=100"}
+                          src={profilePic ? profilePic : bydefault}
                           alt="User profile"
                           width={40}
                           height={40}
@@ -575,7 +575,7 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                           className="rounded-full p-0 h-8 w-8 overflow-hidden border-2 border-emerald-500"
                         >
                           <Image
-                            src={profilePic || "/placeholder.svg?height=100&width=100"}
+                            src={profilePic ? profilePic : bydefault}
                             alt="User profile"
                             width={32}
                             height={32}
@@ -635,7 +635,7 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                       variant="ghost"
                       className={`w-full justify-start py-3 focus:outline-none ${activeTab === item.id ? item.activeColor : "text-gray-300 hover:text-white hover:bg-[#1e293b]"}`}
                       onClick={() => {
-                        setActiveTab(item.id)
+                        setActiveTab(prev => (item.hasDropdown ? (prev === item.id ? "" : item.id) : item.id))
                         if (!item.hasDropdown) {
                           toggleMobileMenu()
                           handleTabClick(item.id)
@@ -647,39 +647,42 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                       </span>
                       {item.name}
                       {item.hasDropdown && (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="ml-auto h-4 w-4 opacity-70"
+                        <motion.div
+                          animate={{ rotate: activeTab === item.id ? 180 : 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="ml-auto"
                         >
-                          <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
+                          <ChevronDown className="h-4 w-4 opacity-70" />
+                        </motion.div>
                       )}
                     </Button>
 
                     {item.hasDropdown && activeTab === item.id && (
-                      <div className="ml-8 mt-1 space-y-1">
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="ml-8 mt-1 space-y-1 overflow-hidden"
+                      >
                         {item.dropdownItems?.map((dropdownItem) => (
-                          <Button
-                            key={dropdownItem}
-                            variant="ghost"
-                            className="w-full justify-start py-2 text-sm text-gray-300 hover:bg-[#2d3748] hover:text-white focus:outline-none"
+                          <Link
+                            key={dropdownItem.name}
+                            href={dropdownItem.path}
                             onClick={() => {
-                              handleDropdownItemClick(item.id, dropdownItem)
-                              toggleMobileMenu()
+                              handleDropdownItemClick(item.id, dropdownItem.name);
+                              toggleMobileMenu();
                             }}
                           >
-                            {dropdownItem}
-                          </Button>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start py-2 text-sm text-gray-300 hover:bg-[#2D3748] hover:text-white focus:outline-none"
+                            >
+                              {dropdownItem.name}
+                            </Button>
+                          </Link>
                         ))}
-                      </div>
+                      </motion.div>
                     )}
                   </div>
                 ))}
@@ -825,7 +828,7 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                   <div className="flex flex-col items-center justify-center space-y-4">
                     <div className="relative h-24 w-24 overflow-hidden rounded-full border-2 border-emerald-500">
                       <Image
-                        src={profilePic || "/placeholder.svg?height=100&width=100"}
+                        src={profilePic ? profilePic : bydefault}
                         alt="Profile picture"
                         width={96}
                         height={96}

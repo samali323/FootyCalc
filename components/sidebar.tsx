@@ -348,7 +348,7 @@ export function Sidebar() {
           </nav>
 
           {/* Carbon Offset Insights */}
-          <div className="px-4 pt-6 pb-2">
+          <div className="px-4 pt-2 pb-2">
             <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">Insights</p>
           </div>
 
@@ -395,9 +395,9 @@ export function Sidebar() {
             </div>
           </div>
 
-          <div className="mt-auto px-4 py-3 text-center">
+          {/* <div className="mt-auto px-4 py-3 text-center">
             <div className="text-xs text-gray-500">v1.2.0</div>
-          </div>
+          </div> */}
         </div>
       </>
     );

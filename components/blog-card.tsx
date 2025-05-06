@@ -80,65 +80,52 @@ export function BlogCard({ post, index }: { post: BlogPost; index: number }) {
   const excerpt = post.description.replace(/<[^>]+>/g, "").substring(0, 100) + (post.description.length > 100 ? "..." : "")
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      viewport={{ once: true }}
-      whileHover={{ y: -5 }}
-      className="h-full"
-    >
-      <Card className="bg-[#1e293b] border-gray-800 overflow-hidden h-full flex flex-col">
-        <div className="relative h-48 overflow-hidden">
-          <Image
-            src={post.cover_image || "/placeholder.svg"}
-            alt={post.title}
-            fill
-            className="object-cover transition-transform duration-500 hover:scale-110"
-          />
-          <div className="absolute top-4 left-4">
-            <Badge className="bg-purple-500 hover:bg-purple-600">{post.type}</Badge>
-          </div>
-        </div>
-        <CardHeader>
-          <CardTitle className="text-white line-clamp-2 hover:text-emerald-400 transition-colors">
-            <Link href={`/view/${post.id}`}>{post.title}</Link>
-          </CardTitle>
-          <CardDescription className="text-gray-400 flex items-center">
-            <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-            {new Date(post.created_at).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-grow">
-          <p className="text-gray-300 line-clamp-3">{excerpt}</p>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {categoryNames.map((category, idx) => (
-              <Badge key={idx} variant="outline" className="text-emerald-400 border-emerald-400/50">
-                {category}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-        <CardFooter className="flex items-center justify-between border-t border-gray-800 pt-4">
-          <div className="flex items-center">
-            <div className="relative w-8 h-8 rounded-full overflow-hidden mr-2">
-              <Image src="/placeholder.svg" alt="Author" fill className="object-cover" />
+    <Link href={`/view/${post.id}`} className="block h-full">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: index * 0.1 }}
+        viewport={{ once: true }}
+        whileHover={{ y: -5 }}
+        className="h-full cursor-pointer"
+      >
+        <Card className="bg-[#1e293b] border-gray-800 overflow-hidden h-full flex flex-col">
+          <div className="relative h-48 overflow-hidden">
+            <Image
+              src={post.cover_image || "/placeholder.svg"}
+              alt={post.title}
+              fill
+              className="object-cover transition-transform duration-500 hover:scale-110"
+            />
+            <div className="absolute top-4 left-4">
+              <Badge className="bg-purple-500 hover:bg-purple-600">{post.type}</Badge>
             </div>
-            <span className="text-sm text-gray-400">Unknown Author</span>
           </div>
-          <Link
-            href={`/view/${post.id}`}
-            className="text-emerald-400 hover:text-emerald-300 flex items-center text-sm font-medium"
-          >
-            Read More
-            <ArrowRight className="ml-1 h-4 w-4" />
-          </Link>
-        </CardFooter>
-      </Card>
-    </motion.div>
+          <CardHeader>
+            <CardTitle className="text-white line-clamp-2 hover:text-emerald-400 transition-colors">
+              {post.title}
+            </CardTitle>
+            <CardDescription className="text-gray-400 flex items-center">
+              <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+              {new Date(post.created_at).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow">
+            <p className="text-gray-300 line-clamp-3">{excerpt}</p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {categoryNames.map((category, idx) => (
+                <Badge key={idx} variant="outline" className="text-emerald-400 border-emerald-400/50">
+                  {category}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </Link>
   )
 }

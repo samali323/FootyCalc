@@ -35,6 +35,7 @@ export default function Home() {
   const leaguesSectionRef = useRef<HTMLElement>(null) // Ref for LeagueCards section
   const tournamentsSectionRef = useRef<HTMLElement>(null) // For FootballMegaEvents
   const clubsSectionRef = useRef<HTMLElement>(null) // For TopFootballClubs
+  const blogsSectionRef = useRef<HTMLElement>(null) // For Blogs section
   const sustainabilitySectionRef = useRef<HTMLElement>(null) // For ForestReserves
   const dashboardSectionRef = useRef<HTMLElement>(null) // For ChartSlider (as a placeholder for Dashboard)
 
@@ -177,6 +178,9 @@ export default function Home() {
       case "clubs":
         clubsSectionRef.current?.scrollIntoView({ behavior: "smooth" })
         break
+      case "blogs":
+        blogsSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+        break;
       case "sustainability":
         sustainabilitySectionRef.current?.scrollIntoView({ behavior: "smooth" })
         break
@@ -262,7 +266,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-[#0f172a] overflow-x-hidden w-full">
       {/* ==================== HEADER SECTION ==================== */}
-      <AnimatedHeader scrollToSection={scrollToSection} />
+      <AnimatedHeader scrollToSection={scrollToSection} blogPosts={blogPosts} />
 
       {/* ==================== HERO SECTION ==================== */}
       <section className="relative h-screen w-full overflow-hidden" ref={HeroSectionRef}>
@@ -628,7 +632,7 @@ export default function Home() {
       </section> */}
 
       {/* ==================== SUSTAINABILITY SECTION ==================== */}
-      <section className="py-20 bg-[#0f172a] relative overflow-hidden w-full">
+      <section ref={sustainabilitySectionRef} className="py-20 bg-[#0f172a] relative overflow-hidden w-full">
         <div className="absolute inset-0 bg-[url('/placeholder.svg?height=1080&width=1920')] bg-cover bg-center opacity-10"></div>
 
         <div className="container mx-auto px-4 relative z-10">
@@ -743,7 +747,7 @@ export default function Home() {
 
       {/* ==================== BLOG SECTION ==================== */}
       {blogPosts.length > 0 && (
-        <section className="py-20 bg-gradient-to-b from-[#0f172a] to-[#1e293b] relative overflow-hidden w-full">
+        <section ref={blogsSectionRef} className="py-20 bg-gradient-to-b from-[#0f172a] to-[#1e293b] relative overflow-hidden w-full">
           <div className="absolute inset-0">
             {/* Animated particles */}
             {[...Array(30)].map((_, i) => (
@@ -866,7 +870,7 @@ export default function Home() {
       </section>
 
       {/* ==================== FOOTER SECTION ==================== */}
-      <footer className="py-12 bg-[#0f172a] border-t border-gray-800 w-full">
+      <footer className="py-12 bg-[#0F172A] border-t border-gray-800 w-full">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center mb-8">
             <motion.div
@@ -878,28 +882,27 @@ export default function Home() {
             </motion.div>
             <h2 className="text-2xl font-bold text-white">Sports Emissions</h2>
           </div>
-
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div>
               <h3 className="text-white font-semibold mb-4">Platform</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="/dashboard" className="cursor-pointer text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Dashboard
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="/teams" className="cursor-pointer text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Teams
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="/matches" className="cursor-pointer text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Matches
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="/analytics" className="cursor-pointer text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Analytics
                   </Link>
                 </li>
@@ -909,22 +912,22 @@ export default function Home() {
               <h3 className="text-white font-semibold mb-4">Resources</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Documentation
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     API
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Guides
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Support
                   </Link>
                 </li>
@@ -934,22 +937,22 @@ export default function Home() {
               <h3 className="text-white font-semibold mb-4">Company</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     About
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Careers
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Contact
                   </Link>
                 </li>
@@ -959,29 +962,28 @@ export default function Home() {
               <h3 className="text-white font-semibold mb-4">Legal</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Privacy
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Terms
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Cookies
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
                     Licenses
                   </Link>
                 </li>
               </ul>
             </div>
           </div>
-
           <div className="text-center text-gray-500 text-sm">
             <p>&copy; {new Date().getFullYear()} Sports Emissions. All rights reserved.</p>
           </div>

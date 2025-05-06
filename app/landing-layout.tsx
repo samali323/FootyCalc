@@ -19,7 +19,6 @@ function ProtectedContent({ children }: { children: React.ReactNode }) {
   const { user, isLoading, profile } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
-
   useEffect(() => {
     if (isLoading) return
 
