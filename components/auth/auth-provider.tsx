@@ -105,9 +105,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [router]);
 
+  // const signOut = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     const { error } = await supabase.auth.signOut();
+  //     if (error) {
+  //       console.error("Error signing out:", error);
+  //     } else {
+  //       console.log("Successfully signed out");
+  //       setSession(null);
+  //       setUser(null);
+  //       setProfile(null);
+  //       router.push("/auth/login");
+  //     }
+  //   } catch (err) {
+  //     console.error("Unexpected error during sign out:", err);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+
   const signOut = async () => {
     try {
       setIsLoading(true);
+      // Check if a session exists
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.log("No valid session found, clearing local state");
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        router.push("/auth/login");
+        return;
+      }
+
+      // Proceed with sign-out if session exists
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Error signing out:", error);
