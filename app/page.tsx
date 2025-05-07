@@ -276,8 +276,10 @@ export default function Home() {
             autoPlay
             muted
             loop
+            playsInline // Add this to ensure autoplay on mobile Safari
             className="w-full h-full object-cover"
             poster="/placeholder.svg?height=1080&width=1920"
+            onLoadedData={() => videoRef.current?.play()} // Ensure video plays on load
           >
             <source src="/videos/2657260-uhd_3840_2160_24fps.mp4" type="video/mp4" />
           </video>

@@ -26,8 +26,8 @@ export function AlternativeSolutions() {
         title: "High-Speed Rail",
         emissions: "0.29 tonnes CO₂",
         savings: "99%",
-        icon: "🚄",
-        image: "/pictures/TRN_HS2_Trains.jpg",
+        icon: ":bullettrain_side:",
+        image: "/pictures/Alternatives/TRN_HS2_Trains.jpg",
         features: [
           "Fastest ground transport option",
           "Lower emissions, comfortable for players",
@@ -38,8 +38,8 @@ export function AlternativeSolutions() {
         title: "Electric Team Bus",
         emissions: "0.39 tonnes CO₂",
         savings: "97%",
-        icon: "🚌",
-        image: "/pictures/electricbusscharfsinnsstock.webp",
+        icon: ":bus:",
+        image: "/pictures/Alternatives/electricbusscharfsinnsstock.webp",
         features: [
           "Greatly reduced emissions",
           "Flexible, team branding opportunity",
@@ -50,8 +50,8 @@ export function AlternativeSolutions() {
         title: "Team Train Charter",
         emissions: "0.43 tonnes CO₂",
         savings: "98%",
-        icon: "🚆",
-        image: "/placeholder.svg?height=300&width=500",
+        icon: ":train2:",
+        image: "/pictures/Alternatives/ev-train.webp",
         features: [
           "Lower emissions, comfortable for players",
           "Potential for team meetings en route",
@@ -62,7 +62,7 @@ export function AlternativeSolutions() {
         title: "Hybrid Team Bus",
         emissions: "1.2 tonnes CO₂",
         savings: "85%",
-        icon: "🚐",
+        icon: ":minibus:",
         image: "/placeholder.svg?height=300&width=500",
         features: [
           "Reduced emissions compared to standard buses",
@@ -74,7 +74,7 @@ export function AlternativeSolutions() {
         title: "Biofuel Aircraft",
         emissions: "4.8 tonnes CO₂",
         savings: "60%",
-        icon: "✈️",
+        icon: ":airplane:",
         image: "/placeholder.svg?height=300&width=500",
         features: [
           "Significant reduction in carbon footprint",
@@ -89,7 +89,7 @@ export function AlternativeSolutions() {
         emissions: "Reduction of 60%",
         savings: "60%",
         icon: <Zap className="h-10 w-10 text-yellow-400" />,
-        image: "/placeholder.svg?height=300&width=500",
+        image: "/pictures/Alternatives/Solar Powered Stadium.jpg",
         features: ["Renewable energy source", "Reduced operational costs over time", "Weather dependent generation"],
       },
       {

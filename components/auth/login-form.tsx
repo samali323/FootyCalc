@@ -42,7 +42,7 @@ export function LoginForm() {
       console.log("Login successful:", data.user?.email);
 
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push("/");
         router.refresh();
       }, 500);
     } catch (error: any) {

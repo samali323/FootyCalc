@@ -30,10 +30,10 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
 
   // Background images for each tab
   const backgroundImages = {
-    "world-cup": "/pictures/bg-stadium-1.webp",
-    "champions-league": "/placeholder.svg?height=1080&width=1920&text=Champions+League",
-    "euro": "/pictures/Fifa World Cup Trophy",
-    "copa-america": "/placeholder.svg?height=1080&width=1920&text=Copa+America",
+    "world-cup": "/pictures/background/FIFA World Cup.webp",
+    "champions-league": "/pictures/background/Champions League (3).jpg",
+    "euro": "/pictures/background/EUFA Euro.jpg",
+    "copa-america": "/pictures/background/Copa America.jpg",
   }
 
   // Update background image when tab changes
@@ -225,8 +225,8 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         id: 1,
         name: "UEFA Champions League",
         edition: "2022-23",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
+        image: "/pictures/events/UEFA Champions League 2022-2023 (1).jpg",
+        logo: "/pictures/logo/UEFA Champions League Logo.jpg",
         location: "Europe (Final in Istanbul, Turkey)",
         date: "Jun 2023",
         teams: 32,
@@ -248,8 +248,8 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         id: 2,
         name: "UEFA Champions League",
         edition: "2021-22",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
+        image: "/pictures/events/UEFA Champions League 2021-2022.webp",
+        logo: "/pictures/logo/UEFA Champions League Logo.jpg",
         location: "Europe (Final in Paris, France)",
         date: "May 2022",
         teams: 32,
@@ -271,8 +271,8 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         id: 3,
         name: "UEFA Champions League",
         edition: "2020-21",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
+        image: "/pictures/events/UEFA Champions League 2020-2021.jpg",
+        logo: "/pictures/logo/UEFA Champions League Logo.jpg",
         location: "Europe (Final in Porto, Portugal)",
         date: "May 2021",
         teams: 32,
@@ -294,8 +294,8 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         id: 4,
         name: "UEFA Champions League",
         edition: "2019-20",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
+        image: "/pictures/events/UEFA Champions League 2019-2020 (1).jpg",
+        logo: "/pictures/logo/UEFA Champions League Logo.jpg",
         location: "Europe (Final in Lisbon, Portugal)",
         date: "August 2020",
         teams: 32,
@@ -313,60 +313,60 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
           "Kingsley Coman scored the winning goal against his former club",
         ],
       },
-      {
-        id: 5,
-        name: "UEFA Champions League",
-        edition: "2018-19",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
-        location: "Europe (Final in Madrid, Spain)",
-        date: "June 2019",
-        teams: 32,
-        matches: 125,
-        winner: "Liverpool",
-        runnerUp: "Tottenham Hotspur",
-        finalScore: "2-0",
-        topScorer: "Lionel Messi (12 goals)",
-        attendance: "63,272 (Final)",
-        stadiums: "Multiple across Europe",
-        highlights: [
-          "Liverpool's sixth Champions League/European Cup",
-          "First all-English final since 2008",
-          "Liverpool's comeback from 3-0 down against Barcelona",
-          "Tottenham's dramatic late winner against Ajax in the semi-final",
-        ],
-      },
-      {
-        id: 6,
-        name: "UEFA Champions League",
-        edition: "2017-18",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
-        location: "Europe (Final in Kyiv, Ukraine)",
-        date: "May 2018",
-        teams: 32,
-        matches: 125,
-        winner: "Real Madrid",
-        runnerUp: "Liverpool",
-        finalScore: "3-1",
-        topScorer: "Cristiano Ronaldo (15 goals)",
-        attendance: "61,561 (Final)",
-        stadiums: "Multiple across Europe",
-        highlights: [
-          "Real Madrid's third consecutive Champions League title",
-          "Gareth Bale's spectacular bicycle kick in the final",
-          "Loris Karius' errors in the final",
-          "Cristiano Ronaldo's overhead kick against Juventus",
-        ],
-      },
+      // {
+      //   id: 5,
+      //   name: "UEFA Champions League",
+      //   edition: "2018-19",
+      //   image: "/placeholder.svg?height=400&width=600",
+      //   logo: "/placeholder.svg?height=100&width=100",
+      //   location: "Europe (Final in Madrid, Spain)",
+      //   date: "June 2019",
+      //   teams: 32,
+      //   matches: 125,
+      //   winner: "Liverpool",
+      //   runnerUp: "Tottenham Hotspur",
+      //   finalScore: "2-0",
+      //   topScorer: "Lionel Messi (12 goals)",
+      //   attendance: "63,272 (Final)",
+      //   stadiums: "Multiple across Europe",
+      //   highlights: [
+      //     "Liverpool's sixth Champions League/European Cup",
+      //     "First all-English final since 2008",
+      //     "Liverpool's comeback from 3-0 down against Barcelona",
+      //     "Tottenham's dramatic late winner against Ajax in the semi-final",
+      //   ],
+      // },
+      // {
+      //   id: 6,
+      //   name: "UEFA Champions League",
+      //   edition: "2017-18",
+      //   image: "/placeholder.svg?height=400&width=600",
+      //   logo: "/placeholder.svg?height=100&width=100",
+      //   location: "Europe (Final in Kyiv, Ukraine)",
+      //   date: "May 2018",
+      //   teams: 32,
+      //   matches: 125,
+      //   winner: "Real Madrid",
+      //   runnerUp: "Liverpool",
+      //   finalScore: "3-1",
+      //   topScorer: "Cristiano Ronaldo (15 goals)",
+      //   attendance: "61,561 (Final)",
+      //   stadiums: "Multiple across Europe",
+      //   highlights: [
+      //     "Real Madrid's third consecutive Champions League title",
+      //     "Gareth Bale's spectacular bicycle kick in the final",
+      //     "Loris Karius' errors in the final",
+      //     "Cristiano Ronaldo's overhead kick against Juventus",
+      //   ],
+      // },
     ],
     euro: [
       {
         id: 1,
         name: "UEFA European Championship",
         edition: "Euro 2020",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
+        image: "/pictures/events/UEFA European Championship 2020.webp",
+        logo: "/pictures/logo/UEFA Euro logo 2020 (1).jpg",
         location: "11 European Cities",
         date: "Jun 11 - Jul 11, 2021",
         teams: 24,
@@ -389,8 +389,8 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         id: 2,
         name: "UEFA European Championship",
         edition: "Euro 2016",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
+        image: "/pictures/events/UEFA European Championship 2016 (2).jpg",
+        logo: "/pictures/logo/UEFA Euro logo 2016 (2).jpg",
         location: "France",
         date: "Jun 10 - Jul 10, 2016",
         teams: 24,
@@ -413,8 +413,8 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         id: 3,
         name: "UEFA European Championship",
         edition: "Euro 2012",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
+        image: "/pictures/events/UEFA European Championship 2012.jpg",
+        logo: "/pictures/logo/UEFA Euro logo 2012.jpg",
         location: "Poland & Ukraine",
         date: "Jun 8 - Jul 1, 2012",
         teams: 16,
@@ -438,8 +438,8 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         id: 4,
         name: "UEFA European Championship",
         edition: "Euro 2008",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
+        image: "/pictures/events/UEFA European Championship 2008.jpg",
+        logo: "/pictures/logo/UEFA Euro logo 2008.jpg",
         location: "Austria & Switzerland",
         date: "Jun 7 - Jun 29, 2008",
         teams: 16,
@@ -458,62 +458,38 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
           "Turkey's dramatic late comebacks",
         ],
       },
-      {
-        id: 5,
-        name: "UEFA European Championship",
-        edition: "Euro 2004",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
-        location: "Portugal",
-        date: "Jun 12 - Jul 4, 2004",
-        teams: 16,
-        matches: 31,
-        winner: "Greece",
-        runnerUp: "Portugal",
-        finalScore: "1-0",
-        topScorer: "Milan Baroš (5 goals)",
-        attendance: "1.16 million",
-        stadiums: 10,
-        mascot: "Kinas",
-        highlights: [
-          "Greece's shocking victory as 150-1 outsiders",
-          "Greece defeated hosts Portugal twice (opening game and final)",
-          "Cristiano Ronaldo's tears after the final",
-          "Wayne Rooney's breakthrough tournament at age 18",
-        ],
-      },
-      {
-        id: 6,
-        name: "UEFA European Championship",
-        edition: "Euro 2024",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
-        location: "Germany",
-        date: "Jun 14 - Jul 14, 2024",
-        teams: 24,
-        matches: 51,
-        winner: "TBD",
-        runnerUp: "TBD",
-        finalScore: "TBD",
-        topScorer: "TBD",
-        attendance: "TBD",
-        stadiums: 10,
-        mascot: "Albärt",
-        highlights: [
-          "Returns to a single-host format after pan-European Euro 2020",
-          "Germany hosts its first unified European Championship",
-          "Expanded format with 24 teams continues",
-          "Sustainability is a key focus of the tournament",
-        ],
-      },
     ],
     "copa-america": [
       {
         id: 1,
         name: "Copa América",
+        edition: "Argentina 2024",
+        image: "/pictures/events/Copa America 2024.jpg",
+        logo: "/pictures/logo/Copa America logo 2024.jpg",
+        location: "United States",
+        date: "Jun 20 - Jul 14, 2024",
+        teams: 16,
+        matches: 32,
+        winner: "TBD",
+        runnerUp: "TBD",
+        finalScore: "TBD",
+        topScorer: "TBD",
+        attendance: "TBD",
+        stadiums: 14,
+        mascot: "TBD",
+        highlights: [
+          "Second Copa América to be hosted in the United States",
+          "Expanded format with 16 teams including CONCACAF nations",
+          "Argentina enters as defending champions",
+          "Serves as preparation for the 2026 World Cup",
+        ],
+      },
+      {
+        id: 2,
+        name: "Copa América",
         edition: "Brazil 2021",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
+        image: "/pictures/events/Copa America 2021.jpeg",
+        logo: "/pictures/logo/Copa America logo 2021 (2).jpg",
         location: "Brazil",
         date: "Jun 13 - Jul 10, 2021",
         teams: 10,
@@ -533,11 +509,11 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         ],
       },
       {
-        id: 2,
+        id: 3,
         name: "Copa América",
         edition: "Brazil 2019",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
+        image: "/pictures/events/Copa America 2019.jpg",
+        logo: "/pictures/logo/Copa America logo (2).jpg",
         location: "Brazil",
         date: "Jun 14 - Jul 7, 2019",
         teams: 12,
@@ -557,10 +533,10 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         ],
       },
       {
-        id: 3,
+        id: 4,
         name: "Copa América",
         edition: "Centenario 2016",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/events/Copa America 2016 (2).jpg",
         logo: "/placeholder.svg?height=100&width=100",
         location: "United States",
         date: "Jun 3 - Jun 26, 2016",
@@ -581,10 +557,10 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         ],
       },
       {
-        id: 4,
+        id: 5,
         name: "Copa América",
         edition: "Chile 2015",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/events/Copa America 2015.jpg",
         logo: "/placeholder.svg?height=100&width=100",
         location: "Chile",
         date: "Jun 11 - Jul 4, 2015",
@@ -602,54 +578,6 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
           "Hosts won the tournament for the first time since Colombia in 2001",
           "Arturo Vidal's car crash controversy during the tournament",
           "Gonzalo Higuaín missed a crucial chance in the final",
-        ],
-      },
-      {
-        id: 5,
-        name: "Copa América",
-        edition: "Argentina 2024",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
-        location: "United States",
-        date: "Jun 20 - Jul 14, 2024",
-        teams: 16,
-        matches: 32,
-        winner: "TBD",
-        runnerUp: "TBD",
-        finalScore: "TBD",
-        topScorer: "TBD",
-        attendance: "TBD",
-        stadiums: 14,
-        mascot: "TBD",
-        highlights: [
-          "Second Copa América to be hosted in the United States",
-          "Expanded format with 16 teams including CONCACAF nations",
-          "Argentina enters as defending champions",
-          "Serves as preparation for the 2026 World Cup",
-        ],
-      },
-      {
-        id: 6,
-        name: "Copa América",
-        edition: "Brazil 2011",
-        image: "/placeholder.svg?height=400&width=600",
-        logo: "/placeholder.svg?height=100&width=100",
-        location: "Argentina",
-        date: "Jul 1 - Jul 24, 2011",
-        teams: 12,
-        matches: 26,
-        winner: "Uruguay",
-        runnerUp: "Paraguay",
-        finalScore: "3-0",
-        topScorer: "Paolo Guerrero (5 goals)",
-        attendance: "583,053",
-        stadiums: 8,
-        mascot: "Tangolero",
-        highlights: [
-          "Uruguay won a record 15th Copa América title",
-          "Luis Suárez was named player of the tournament",
-          "Paraguay reached the final without winning a single game in regular time",
-          "Brazil eliminated in quarter-finals on penalties",
         ],
       },
     ],
@@ -762,8 +690,8 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
         </div>
 
         <Tabs defaultValue="world-cup" onValueChange={setActiveTab} className="w-full">
-          <div className="flex justify-center mb-24">
-            <TabsList className="bg-[#1e293b]/80 border border-gray-800 p-1 rounded-xl grid grid-cols-4 w-full max-w-3xl">
+          <div className="flex justify-center mb-16 sm:mb-20">
+            <TabsList className="bg-[#1E293B]/80 border items-baseline lg:items-center sm:h-fit border-gray-800 p-1 rounded-xl grid grid-cols-4 w-full sm:w-fit max-w-3xl">
               <TabsTrigger
                 value="world-cup"
                 className="flex flex-col items-center py-3 data-[state=active]:bg-gradient-to-b data-[state=active]:from-amber-500 data-[state=active]:to-amber-600 rounded-lg"
@@ -773,9 +701,9 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
                   alt="FIFA World Cup"
                   width={40}
                   height={40}
-                  className="mb-1"
+                  className="mb-1 md:h-11 md:w-11"
                 />
-                <span>World Cup</span>
+                <span className="whitespace-normal text-xs sm:text-sm lg:text-base">World Cup</span>
               </TabsTrigger>
               <TabsTrigger
                 value="champions-league"
@@ -786,9 +714,9 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
                   alt="Champions League"
                   width={40}
                   height={40}
-                  className="mb-1"
+                  className="mb-1 md:h-11 md:w-11"
                 />
-                <span>Champions League</span>
+                <span className="whitespace-normal text-xs sm:text-sm lg:text-base">Champions League</span>
               </TabsTrigger>
               <TabsTrigger
                 value="euro"
@@ -799,9 +727,9 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
                   alt="UEFA Euro"
                   width={40}
                   height={40}
-                  className="mb-1"
+                  className="sm:mb-1 mb-2 h-9 w-8 md:h-10 md:w-10"
                 />
-                <span>UEFA Euro</span>
+                <span className="whitespace-normal text-xs sm:text-sm lg:text-base">UEFA Euro</span>
               </TabsTrigger>
               <TabsTrigger
                 value="copa-america"
@@ -812,9 +740,9 @@ export const FootballMegaEvents = forwardRef<HTMLElement>((props, ref) => {
                   alt="Copa America"
                   width={40}
                   height={40}
-                  className="mb-1"
+                  className="mb-1 h-9 w-8 md:h-10 md:w-10"
                 />
-                <span>Copa América</span>
+                <span className="whitespace-normal text-xs sm:text-sm lg:text-base">Copa América</span>
               </TabsTrigger>
             </TabsList>
           </div>

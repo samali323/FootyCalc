@@ -19,7 +19,7 @@ export function ForestReserves() {
         location: "South America",
         area: "5.5 million km²",
         carbonStorage: "~90-140 billion tonnes",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/Carbon-Sinks/Amazon Rainforest (1).jpg",
         description:
           "The Amazon is the world's largest tropical rainforest, absorbing vast amounts of CO2 and producing 20% of Earth's oxygen.",
         facts: [
@@ -33,7 +33,7 @@ export function ForestReserves() {
         location: "Central Africa",
         area: "3.7 million km²",
         carbonStorage: "~60 billion tonnes",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/Carbon-Sinks/Congo Basin rainforest.jpg",
         description:
           "The second-largest tropical forest in the world, the Congo Basin is a critical carbon sink and biodiversity hotspot.",
         facts: [
@@ -47,7 +47,7 @@ export function ForestReserves() {
         location: "Southeast Asia",
         area: "2.4 million km²",
         carbonStorage: "~42 billion tonnes",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/Carbon-Sinks/Southeast Asian Rainforests.jpg",
         description:
           "The rainforests of Indonesia, Malaysia, and Papua New Guinea are among the most biodiverse and carbon-rich ecosystems.",
         facts: [
@@ -63,7 +63,7 @@ export function ForestReserves() {
         location: "Northern Hemisphere",
         area: "14.7 million km²",
         carbonStorage: "~700 billion tonnes",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/Carbon-Sinks/Boreal Forest (Taiga).jpg",
         description:
           "The world's largest terrestrial biome, boreal forests circle the Northern Hemisphere and store massive amounts of carbon.",
         facts: [
@@ -77,7 +77,7 @@ export function ForestReserves() {
         location: "Russia",
         area: "7.6 million km²",
         carbonStorage: "~300 billion tonnes",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/Carbon-Sinks/Russian Taiga.jpg",
         description:
           "Russia's vast boreal forest is the largest continuous forest on Earth and a critical carbon reservoir.",
         facts: [
@@ -91,7 +91,7 @@ export function ForestReserves() {
         location: "Canada",
         area: "3.7 million km²",
         carbonStorage: "~208 billion tonnes",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/Carbon-Sinks/Canadian Boreal Forest.jpg",
         description:
           "Canada's boreal region represents 28% of the world's boreal zone and is vital for global carbon sequestration.",
         facts: [
@@ -107,7 +107,7 @@ export function ForestReserves() {
         location: "Tropical Coastlines",
         area: "137,760 km²",
         carbonStorage: "~6.4 billion tonnes",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/Carbon-Sinks/Mangrove Forests.jpg",
         description:
           "Mangroves are among the most carbon-rich forests in the tropics, storing carbon in plants and soil for thousands of years.",
         facts: [
@@ -121,7 +121,7 @@ export function ForestReserves() {
         location: "Coastal Waters Worldwide",
         area: "300,000-600,000 km²",
         carbonStorage: "~19.9 billion tonnes",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/Carbon-Sinks/Seagrass Meadows.jpg",
         description:
           "Seagrass meadows are marine flowering plants that form extensive underwater meadows and sequester carbon efficiently.",
         facts: [
@@ -135,7 +135,7 @@ export function ForestReserves() {
         location: "Temperate and Arctic Coastal Waters",
         area: "~25% of world's coastlines",
         carbonStorage: "Significant but not fully quantified",
-        image: "/placeholder.svg?height=400&width=600",
+        image: "/pictures/Carbon-Sinks/Kelp Forests.jpg",
         description:
           "Kelp forests are underwater ecosystems formed by large brown algae that grow up to 45 meters tall.",
         facts: [
@@ -145,6 +145,12 @@ export function ForestReserves() {
         ],
       },
     ],
+
+
+
+
+
+
   }
 
   return (

@@ -53,6 +53,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -131,16 +132,20 @@
 }
 
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0) translateX(0);
   }
+
   25% {
     transform: translateY(-20px) translateX(10px);
   }
+
   50% {
     transform: translateY(0) translateX(20px);
   }
+
   75% {
     transform: translateY(20px) translateX(10px);
   }
@@ -320,4 +325,25 @@ body {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+}
+
+video {
+  -webkit-appearance: none;
+  /* Remove Safari's default controls */
+  -webkit-tap-highlight-color: transparent;
+  /* Prevent tap highlight on mobile */
+  outline: none;
+  /* Remove focus outline */
+}
+
+video::-webkit-media-controls {
+  display: none !important;
+}
+
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+
+video::-webkit-media-controls-panel {
+  display: none !important;
 }
