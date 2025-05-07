@@ -584,13 +584,15 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-[#1e293b] border-gray-800 text-white">
-                        <DropdownMenuItem
-                          className="hover:bg-[#2d3748] cursor-pointer flex items-center"
-                          onClick={() => setIsDialogOpen(true)}
-                        >
-                          <User className="h-4 w-4 mr-2" />
-                          Details
-                        </DropdownMenuItem>
+                        {user && (
+                          <DropdownMenuItem
+                            className="hover:bg-[#2d3748] cursor-pointer flex items-center"
+                            onClick={() => setIsDialogOpen(true)}
+                          >
+                            <User className="h-4 w-4 mr-2" />
+                            Details
+                          </DropdownMenuItem>
+                        )}
                         {user && (
                           <DropdownMenuItem
                             className="hover:bg-[#2d3748] cursor-pointer flex items-center text-red-400 hover:text-red-300"
@@ -598,6 +600,14 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                           >
                             <LogOut className="h-4 w-4 mr-2" />
                             Logout
+                          </DropdownMenuItem>
+                        )}
+                        {!user && (
+                          <DropdownMenuItem className="hover:bg-[#2d3748] cursor-pointer flex items-center">
+                            <Link href="/auth/login" className="flex items-center w-full">
+                              <LogIn className="h-4 w-4 mr-2" />
+                              Login
+                            </Link>
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
