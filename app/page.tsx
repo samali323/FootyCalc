@@ -872,120 +872,86 @@ export default function Home() {
       {/* ==================== FOOTER SECTION ==================== */}
       <footer className="py-12 bg-[#0F172A] border-t border-gray-800 w-full">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center mb-8">
+          <div className="flex flex-col items-center justify-center">
+            {/* Logo and Title */}
             <motion.div
-              initial={{ rotate: 0 }}
-              whileHover={{ rotate: 360 }}
-              transition={{ duration: 1, ease: "easeInOut" }}
+              className="flex items-center justify-center mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
             >
-              <Leaf className="h-8 w-8 text-emerald-400 mr-2" />
+              <motion.div
+                initial={{ rotate: 0 }}
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 1, ease: "easeInOut" }}
+              >
+                <Leaf className="h-10 w-10 text-emerald-400 mr-3" />
+              </motion.div>
+              <h2 className="text-3xl font-bold text-white">Sports Emissions</h2>
             </motion.div>
-            <h2 className="text-2xl font-bold text-white">Sports Emissions</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h3 className="text-white font-semibold mb-4">Platform</h3>
-              <ul className="space-y-2">
+
+            {/* Platform Links - Centered and Enhanced */}
+            <div className="mb-10 text-center">
+              <h3 className="text-white text-xl font-semibold mb-6 inline-block border-b-2 border-emerald-400 pb-1">
+                Platform
+              </h3>
+              <ul className="flex flex-wrap justify-center gap-x-8 gap-y-4 max-w-md mx-auto">
                 <li>
-                  <Link href="/dashboard" className="cursor-pointer text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Dashboard
+                  <Link
+                    href="/dashboard"
+                    className="text-gray-300 hover:text-emerald-400 transition-colors duration-200 text-lg flex items-center"
+                  >
+                    <span className="relative group">
+                      Dashboard
+                      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-emerald-400 transition-all duration-300 group-hover:w-full"></span>
+                    </span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/teams" className="cursor-pointer text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Teams
+                  <Link
+                    href="/teams"
+                    className="text-gray-300 hover:text-emerald-400 transition-colors duration-200 text-lg flex items-center"
+                  >
+                    <span className="relative group">
+                      Teams
+                      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-emerald-400 transition-all duration-300 group-hover:w-full"></span>
+                    </span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/matches" className="cursor-pointer text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Matches
+                  <Link
+                    href="/matches"
+                    className="text-gray-300 hover:text-emerald-400 transition-colors duration-200 text-lg flex items-center"
+                  >
+                    <span className="relative group">
+                      Matches
+                      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-emerald-400 transition-all duration-300 group-hover:w-full"></span>
+                    </span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/analytics" className="cursor-pointer text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Analytics
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-white font-semibold mb-4">Resources</h3>
-              <ul className="space-y-2">
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Documentation
-                  </Link>
-                </li>
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    API
-                  </Link>
-                </li>
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Guides
-                  </Link>
-                </li>
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Support
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-white font-semibold mb-4">Company</h3>
-              <ul className="space-y-2">
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Blog
-                  </Link>
-                </li>
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Careers
-                  </Link>
-                </li>
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Contact
+                  <Link
+                    href="/analytics"
+                    className="text-gray-300 hover:text-emerald-400 transition-colors duration-200 text-lg flex items-center"
+                  >
+                    <span className="relative group">
+                      Analytics
+                      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-emerald-400 transition-all duration-300 group-hover:w-full"></span>
+                    </span>
                   </Link>
                 </li>
               </ul>
             </div>
-            <div>
-              <h3 className="text-white font-semibold mb-4">Legal</h3>
-              <ul className="space-y-2">
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Privacy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Terms
-                  </Link>
-                </li>
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Cookies
-                  </Link>
-                </li>
-                <li>
-                  <Link href="" className="cursor-default text-gray-400 hover:text-emerald-400 transition-colors duration-200">
-                    Licenses
-                  </Link>
-                </li>
-              </ul>
+
+            {/* Decorative Element */}
+            <div className="w-full max-w-xs mx-auto mb-8">
+              <div className="h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent"></div>
             </div>
-          </div>
-          <div className="text-center text-gray-500 text-sm">
-            <p>&copy; {new Date().getFullYear()} Sports Emissions. All rights reserved.</p>
+
+            {/* Copyright */}
+            <div className="text-center text-gray-500 text-sm">
+              <p>&copy; {new Date().getFullYear()} Sports Emissions. All rights reserved.</p>
+            </div>
           </div>
         </div>
       </footer>

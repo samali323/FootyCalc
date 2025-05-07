@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AnimatedBackground from "@/components/animatedBackground";
 import { useAuth } from "./auth-provider";
+import { LogIn } from "lucide-react";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -59,7 +60,9 @@ export function LoginForm() {
 
         <Card className="w-full max-w-md bg-gray-900/70 backdrop-blur-xl border-green-600/40 text-white">
           <CardHeader>
-            <CardTitle className="text-2xl text-green-400">Admin Login</CardTitle>
+            <CardTitle className="text-2xl text-green-400 flex items-center gap-2">
+              <LogIn className="w-6 h-6" /> Login
+            </CardTitle>
             <CardDescription className="text-white/70">
               Sign in to access the Sports Emissions Dashboard
             </CardDescription>
