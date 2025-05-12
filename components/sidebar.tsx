@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, Users, Calendar, BarChart, Leaf, ChevronRight, Menu, X, TrendingUp, ShieldAlert, Calculator, Book } from "lucide-react";
+import { Home, Users, Calendar, BarChart, Leaf, ChevronRight, Menu, X, TrendingUp, ShieldAlert, Calculator, Book, MoveRight } from "lucide-react";
 import { getCarbonOffsetStatus } from "@/lib/carbonOffset";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
@@ -203,7 +203,7 @@ export function Sidebar() {
                 <Leaf className="h-6 w-6 text-emerald-400" />
               </div>
               <h1 className="ml-3 text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-300 to-emerald-500">
-                Sports Emissions
+                Sport Ecolytics
               </h1>
             </div>
           </Link>
@@ -211,9 +211,16 @@ export function Sidebar() {
 
         {/* Navigation */}
         <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
-          <div className="px-4 pb-2">
-            <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">Main Navigation</p>
-          </div>
+          <Link href="/">
+            <div className="px-4 pb-2">
+              <div className="flex items-center space-x-2 group">
+                <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider group-hover:text-emerald-400">
+                  Main Navigation
+                </p>
+                <MoveRight className="text-gray-400 size-5 transition-transform duration-300 group-hover:translate-x-2 group-hover:text-emerald-400" />
+              </div>
+            </div>
+          </Link>
 
           <nav className="mt-2 px-3 space-y-1">
             {navigation.map(item => renderNavLink(item, "main"))}

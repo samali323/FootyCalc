@@ -182,7 +182,7 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
   const [lastScrollY, setLastScrollY] = useState(0)
   const [isAtTop, setIsAtTop] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState("leagues")
+  const [activeTab, setActiveTab] = useState("")
   const { signOut, profile, user } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [firstName, setFirstName] = useState(profile?.first_name || "")
@@ -474,18 +474,18 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                   </div>
                   <div>
                     <h1 className="text-lg md:text-xl font-bold text-white">
-                      Sports <span className="text-emerald-400">Emissions</span>
+                      Sport <span className="text-emerald-400">Ecolytics</span>
                     </h1>
-                    <p className="text-xs text-gray-400 hidden md:block">Tracking the carbon footprint of sports</p>
+                    <p className="text-xs hidden sm:block text-gray-400">Sports Sustainability Intelligence: Keeping score of what matters</p>
                   </div>
                 </div>
 
-                <nav className="hidden md:flex items-center space-x-1">
+                <nav className="hidden lg:flex items-center space-x-1">
                   {navItems.map((item) => (
                     <div key={item.id} className="relative group">
                       <Button
                         variant="ghost"
-                        className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none ${activeTab === item.id ? `${item.activeColor} hover:bg-transparent` : "text-gray-300 hover:text-white hover:bg-[#1e293b]"}`}
+                        className={`flex items-center px-2 xl:px-3 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none ${activeTab === item.id ? `${item.activeColor} hover:bg-transparent` : "text-gray-300 hover:text-white hover:bg-[#1e293b]"}`}
                         onClick={() => handleTabClick(item.id)}
                       >
                         <span className={activeTab === item.id ? item.activeColor : "text-gray-400"}>{item.icon}</span>
@@ -514,7 +514,7 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                   ))}
                 </nav>
 
-                <div className="hidden md:flex items-center space-x-3">
+                <div className="hidden lg:flex items-center space-x-3">
                   <span className="text-gray-300 text-sm">
                     <span className="text-emerald-400">{displayName}</span>
                   </span>
@@ -565,7 +565,7 @@ export function AnimatedHeader({ scrollToSection }: AnimatedHeaderProps) {
                   </DropdownMenu>
                 </div>
 
-                <div className="flex md:hidden items-center space-x-2">
+                <div className="flex lg:hidden items-center space-x-2">
                   <div className="flex items-center mr-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
