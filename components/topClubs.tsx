@@ -358,11 +358,11 @@ export const TopFootballClubs = forwardRef<HTMLElement>((props, ref) => {
                     </div>
                   </div>
 
-                  <Tabs defaultValue="overview" className="p-6">
+                  <Tabs defaultValue="overview" className="sm:p-6">
                     <TabsList className="grid grid-cols-3 mb-6">
-                      <TabsTrigger value="overview">Overview</TabsTrigger>
-                      <TabsTrigger value="achievements">Achievements</TabsTrigger>
-                      <TabsTrigger value="stadium">Stadium</TabsTrigger>
+                      <TabsTrigger className="text-xs sm:text-sm" value="overview">Overview</TabsTrigger>
+                      <TabsTrigger className="text-xs sm:text-sm" value="achievements">Achievements</TabsTrigger>
+                      <TabsTrigger className="text-xs sm:text-sm" value="stadium">Stadium</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="overview" className="space-y-6">
@@ -524,11 +524,11 @@ export const TopFootballClubs = forwardRef<HTMLElement>((props, ref) => {
                           })
                         }
                         viewport={{ once: true }}
-                        className="grid grid-cols-3 gap-4"
+                        className="grid grid-cols-3 gap-2 sm:gap-4"
                       >
                         <div className="bg-gradient-to-br from-amber-500/20 to-amber-700/20 rounded-lg p-4 text-center border border-amber-500/30">
                           <Trophy className="h-8 w-8 text-amber-400 mx-auto mb-2" />
-                          <p className="text-gray-300 text-sm">Domestic Titles</p>
+                          <p className="text-gray-300 text-xs sm:text-sm">Domestic Titles</p>
                           <div className="flex justify-center items-end">
                             {startAnimation.leagueTitles ? (
                               <>
@@ -547,7 +547,7 @@ export const TopFootballClubs = forwardRef<HTMLElement>((props, ref) => {
                         </div>
                         <div className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 rounded-lg p-4 text-center border border-blue-500/30">
                           <Trophy className="h-8 w-8 text-blue-400 mx-auto mb-2" />
-                          <p className="text-gray-300 text-sm">Champions League</p>
+                          <p className="text-gray-300 text-xs sm:text-sm">Champions League</p>
                           <div className="flex justify-center items-end">
                             {startAnimation.championsLeague ? (
                               <>
@@ -566,7 +566,7 @@ export const TopFootballClubs = forwardRef<HTMLElement>((props, ref) => {
                         </div>
                         <div className="bg-gradient-to-br from-purple-500/20 to-purple-700/20 rounded-lg p-4 text-center border border-purple-500/30">
                           <Trophy className="h-8 w-8 text-purple-400 mx-auto mb-2" />
-                          <p className="text-gray-300 text-sm">Total Trophies</p>
+                          <p className="text-gray-300 text-xs sm:text-sm">Total Trophies</p>
                           <div className="flex justify-center items-end">
                             {startAnimation.totalTrophies ? (
                               <>
@@ -652,7 +652,7 @@ export const TopFootballClubs = forwardRef<HTMLElement>((props, ref) => {
                     </TabsContent>
                   </Tabs>
 
-                  <CardFooter className="px-6 pb-6 pt-0">
+                  <CardFooter className="px-6 pb-6 pt-6 sm:pt-0">
                     <Link href="/teams" className="w-full">
                       <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white">
                         <span className="flex items-center">
