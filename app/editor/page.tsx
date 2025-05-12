@@ -594,7 +594,7 @@ const Editor: React.FC = () => {
 
     // Render Blog Editor Tab
     const renderBlogEditorTab = () => (
-        <div className="p-4 space-y-4">
+        <div className="sm:p-4 space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Blog Title */}
                 <div className="space-y-2">
@@ -778,14 +778,14 @@ const Editor: React.FC = () => {
                 <button
                     onClick={handleClearFields}
                     disabled={isLoading}
-                    className="flex items-center justify-center px-4 py-2 bg-gray-600 text-white font-medium rounded-lg shadow hover:bg-gray-700 focus:ring-4 focus:ring-gray-500/50 transition-all duration-200"
+                    className="flex items-center justify-center text-sm sm:text-base px-4 py-2 bg-gray-600 text-white font-medium rounded-lg shadow hover:bg-gray-700 focus:ring-4 focus:ring-gray-500/50 transition-all duration-200"
                 >
                     Clear Fields
                 </button>
                 <button
                     onClick={handleSubmit}
                     disabled={isLoading}
-                    className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-medium rounded-lg shadow hover:from-emerald-700 hover:to-emerald-800 focus:ring-4 focus:ring-emerald-500/50 transition-all duration-200"
+                    className="flex items-center justify-center text-sm sm:text-base px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-medium rounded-lg shadow hover:from-emerald-700 hover:to-emerald-800 focus:ring-4 focus:ring-emerald-500/50 transition-all duration-200"
                 >
                     {isLoading ? 'Processing...' : localStorage.getItem('editingPostId') ? 'Update' : 'Publish'}
                 </button>
@@ -868,15 +868,15 @@ const Editor: React.FC = () => {
         };
 
         return (
-            <div className="space-y-6 p-4 bg-gray-950 rounded-xl">
-                <h3 className="text-xl font-bold text-white tracking-wide flex items-center gap-2">
+            <div className="space-y-6 sm:p-4 bg-gray-950 rounded-xl">
+                <h3 className="sm:text-xl font-bold text-lg text-white tracking-wide flex items-center gap-2">
                     <div className="h-6 w-1 bg-emerald-500 rounded-full"></div>
                     Private Blogs
                 </h3>
 
-                <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex flex-col xl:flex-row gap-6">
                     {/* Post Cards Section (70%) */}
-                    <div className="w-full md:w-[70%]">
+                    <div className="w-full xl:w-[70%] order-2 xl:order-1">
                         {postsLoading && (
                             <div className="flex justify-center py-8">
                                 <RefreshCw className="animate-spin h-6 w-6 text-emerald-500" />
@@ -921,11 +921,11 @@ const Editor: React.FC = () => {
                                             </div>
 
                                             {/* Content */}
-                                            <div className="flex-1 p-5">
-                                                <h4 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors duration-300">
+                                            <div className="flex-1 p-3 sm:p-4 md:p-5">
+                                                <h4 className="text-base sm:text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors duration-300">
                                                     {post.title}
                                                 </h4>
-                                                <div className="flex flex-wrap gap-2 mt-2 text-sm text-gray-400 items-center">
+                                                <div className="flex text-xs flex-wrap gap-2 mt-2 sm:text-sm text-gray-400 items-center">
                                                     <span className="flex items-center gap-1">
                                                         <Calendar className="h-4 w-4 text-emerald-400" />
                                                         {new Date(post.created_at).toLocaleDateString()}
@@ -958,7 +958,7 @@ const Editor: React.FC = () => {
                                             </div>
 
                                             {/* Actions */}
-                                            <div className="flex md:flex-col gap-2 p-5 md:border-l border-gray-700 bg-gray-900/30">
+                                            <div className="flex flex-row md:flex-col gap-2 p-3 sm:p-4 md:p-5 md:border-l border-gray-700 bg-gray-900/30">
                                                 <Button
                                                     onClick={() => {
                                                         router.push(`/editor/${post.id}`);
@@ -1041,7 +1041,7 @@ const Editor: React.FC = () => {
                     </div>
 
                     {/* Search and Category Filter Section (30%) */}
-                    <div className="w-full md:w-[30%] bg-gray-900 border border-gray-800 rounded-lg p-4 h-fit">
+                    <div className="w-full xl:w-[30%] order-1 xl:order-2 bg-gray-900 border border-gray-800 rounded-lg p-4 h-fit">
                         <h4 className="text-white text-md font-semibold mb-2">Search</h4>
                         <input
                             type="text"
@@ -1054,7 +1054,7 @@ const Editor: React.FC = () => {
                             className="w-full px-3 py-2 rounded-md bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-4"
                         />
 
-                        <h4 className="text-white text-md font-semibold mb-2">Filter by Category</h4>
+                        <h4 className="text-white text-sm sm:text-md font-semibold mb-2">Filter by Category</h4>
                         {categoriesLoading && (
                             <div className="flex items-center">
                                 <RefreshCw className="animate-spin h-4 w-4 text-emerald-500 mr-2" />
@@ -1076,7 +1076,7 @@ const Editor: React.FC = () => {
                                     <button
                                         key={category.id}
                                         onClick={() => toggleCategoryFilter(category.id)}
-                                        className={`px-3 py-1 rounded-full text-sm transition-all duration-200 ${selectedFilterCategories.includes(category.id)
+                                        className={`px-3 py-1 rounded-full text-xs sm:text-sm transition-all duration-200 ${selectedFilterCategories.includes(category.id)
                                             ? 'bg-emerald-600 text-white'
                                             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                             }`}
@@ -1091,9 +1091,9 @@ const Editor: React.FC = () => {
 
                 {/* Delete Confirmation Dialog */}
                 {isDeletePostDialogOpen && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                        <div className="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-                            <h3 className="text-lg font-semibold text-white mb-4">Confirm Deletion</h3>
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 sm:p-0">
+                        <div className="bg-gray-800 p-4 sm:p-6 rounded-lg w-full max-w-md">
+                            <h3 className="text-lg font-semibold text-white mb-2 sm:mb-4">Confirm Deletion</h3>
                             <p className="text-gray-300 mb-4">
                                 Are you sure you want to delete the post "
                                 {posts.find((post) => post.id === postToDelete)?.title}"?
@@ -1104,13 +1104,13 @@ const Editor: React.FC = () => {
                                         setIsDeletePostDialogOpen(false);
                                         setPostToDelete(null);
                                     }}
-                                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all duration-200"
+                                    className="px-4 py-2 bg-gray-600 text-sm sm:text-base text-white rounded-lg hover:bg-gray-700 transition-all duration-200"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleDeletePost}
-                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200"
+                                    className="px-4 py-2 bg-red-600 text-sm sm:text-base text-white rounded-lg hover:bg-red-700 transition-all duration-200"
                                 >
                                     Delete
                                 </button>
@@ -1124,14 +1124,14 @@ const Editor: React.FC = () => {
 
     // Render Settings Tab
     const renderSettingsTab = () => (
-        <div className="px-4 space-y-4">
+        <div className="sm:px-4 space-y-4">
             <h3 className="text-lg font-semibold text-white mt-6">Manage Categories</h3>
             <div className="bg-gray-800 p-4 rounded-lg space-y-4">
                 <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-300">Categories</span>
                     <button
                         onClick={() => setIsAddCategoryDialogOpen(true)}
-                        className="flex items-center px-2 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all duration-200"
+                        className="flex items-center text-sm sm:text-base px-2 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all duration-200"
                     >
                         <PlusCircle className="h-4 w-4 mr-1" />
                         Add Category
@@ -1160,7 +1160,7 @@ const Editor: React.FC = () => {
                                 key={category.id}
                                 className="flex items-center bg-gray-700 px-3 py-1 rounded-lg"
                             >
-                                <span className="text-sm text-gray-300">{category.name}</span>
+                                <span className="text-xs sm:text-sm text-gray-300">{category.name}</span>
                                 <button
                                     onClick={() => {
                                         setCategoryToDelete(category.id);
@@ -1178,9 +1178,9 @@ const Editor: React.FC = () => {
 
             {/* Add Category Dialog */}
             {isAddCategoryDialogOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-                        <h3 className="text-lg font-semibold text-white mb-4">Add New Category</h3>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 sm:p-0">
+                    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg w-full max-w-md">
+                        <h3 className="text-lg font-semibold text-white mb-2 sm:mb-4">Add New Category</h3>
                         <input
                             type="text"
                             placeholder="Enter category name"
@@ -1194,7 +1194,7 @@ const Editor: React.FC = () => {
                                     setIsAddCategoryDialogOpen(false);
                                     setNewCategoryInput('');
                                 }}
-                                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all duration-200"
+                                className="px-4 py-2 bg-gray-600 text-sm sm:text-base text-white rounded-lg hover:bg-gray-700 transition-all duration-200"
                             >
                                 Cancel
                             </button>
@@ -1206,7 +1206,7 @@ const Editor: React.FC = () => {
                                         setNewCategoryInput('');
                                     }
                                 }}
-                                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all duration-200"
+                                className="px-4 py-2 bg-emerald-600 text-sm sm:text-base text-white rounded-lg hover:bg-emerald-700 transition-all duration-200"
                             >
                                 Add
                             </button>
@@ -1217,9 +1217,9 @@ const Editor: React.FC = () => {
 
             {/* Delete Confirmation Dialog */}
             {isDeleteDialogOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-                        <h3 className="text-lg font-semibold text-white mb-4">Confirm Deletion</h3>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 sm:p-0">
+                    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg w-full max-w-md">
+                        <h3 className="text-lg font-semibold text-white mb-2 sm:mb-4">Confirm Deletion</h3>
                         <p className="text-gray-300 mb-4">
                             Are you sure you want to delete the category "
                             {availableCategories.find((cat) => cat.id === categoryToDelete)?.name}"?
@@ -1230,13 +1230,13 @@ const Editor: React.FC = () => {
                                     setIsDeleteDialogOpen(false);
                                     setCategoryToDelete(null);
                                 }}
-                                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all duration-200"
+                                className="px-4 py-2 bg-gray-600 text-sm sm:text-base text-white rounded-lg hover:bg-gray-700 transition-all duration-200"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleDeleteCategory}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200"
+                                className="px-4 py-2 bg-red-600 text-sm sm:text-base text-white rounded-lg hover:bg-red-700 transition-all duration-200"
                             >
                                 Delete
                             </button>
@@ -1248,16 +1248,16 @@ const Editor: React.FC = () => {
     );
 
     return (
-        <div className="px-4 space-y-4">
+        <div className="lg:px-4 space-y-4 w-full">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-white">Blog Management</h2>
             </div>
 
             {/* Tabs Navigation */}
-            <div className="flex space-x-2 border-b border-gray-700 pt-3 pb-4">
+            <div className="flex flex-wrap gap-2 border-b border-gray-700 pt-3 pb-4">
                 <button
                     onClick={() => setActiveTab('posts-list')}
-                    className={`flex items-center px-4 py-2 rounded-lg transition-all duration-200 text-sm ${activeTab === 'posts-list'
+                    className={`flex text-xs items-center px-4 py-2 rounded-lg transition-all duration-200 sm:text-sm ${activeTab === 'posts-list'
                         ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                         }`}
@@ -1267,7 +1267,7 @@ const Editor: React.FC = () => {
                 </button>
                 <button
                     onClick={() => setActiveTab('blog-editor')}
-                    className={`flex items-center px-4 py-2 rounded-lg transition-all duration-200 text-sm ${activeTab === 'blog-editor'
+                    className={`flex text-xs items-center px-4 py-2 rounded-lg transition-all duration-200 sm:text-sm ${activeTab === 'blog-editor'
                         ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                         }`}
@@ -1277,7 +1277,7 @@ const Editor: React.FC = () => {
                 </button>
                 <button
                     onClick={() => setActiveTab('settings')}
-                    className={`flex items-center px-4 py-2 rounded-lg transition-all duration-200 text-sm ${activeTab === 'settings'
+                    className={`flex text-xs items-center px-4 py-2 rounded-lg transition-all duration-200 sm:text-sm ${activeTab === 'settings'
                         ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                         }`}

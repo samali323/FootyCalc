@@ -6,9 +6,10 @@ import Image from "next/image"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowRight, Calendar } from "lucide-react"
+import { ArrowRight, Calendar, Globe, Tag } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "react-toastify"
+import { Separator } from "@/components/ui/separator"
 
 export interface BlogPost {
   id: number
@@ -77,7 +78,8 @@ export function BlogCard({ post, index }: { post: BlogPost; index: number }) {
   }
 
   const categoryNames = getCategoryNames(post.categories)
-  const excerpt = post.description.replace(/<[^>]+>/g, "").substring(0, 100) + (post.description.length > 100 ? "..." : "")
+  const descriptionpiece = post.description.replace(/<[^>]+>/g, "").substring(0, 80) + (post.description.length > 80 ? "..." : "")
+  const titlepiece = post.title.replace(/<[^>]+>/g, "").substring(0, 80) + (post.title.length > 80 ? "..." : "")
 
   return (
     <Link href={`/view/${post.id}`} className="block h-full">
@@ -102,20 +104,23 @@ export function BlogCard({ post, index }: { post: BlogPost; index: number }) {
             </div>
           </div>
           <CardHeader>
-            <CardTitle className="text-white line-clamp-2 hover:text-emerald-400 transition-colors">
-              {post.title}
+            <CardTitle className="text-white line-clamp-2 leading-6 hover:text-emerald-400 transition-colors">
+              {titlepiece}
             </CardTitle>
-            <CardDescription className="text-gray-400 flex items-center">
-              <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-              {new Date(post.created_at).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
+            <CardDescription className="flex flex-wrap gap-2 pt-1 text-sm text-gray-400 items-center">
+              <span className="flex items-center gap-1">
+                <Calendar className="h-4 w-4 mr-1 text-emerald-400" />
+                {new Date(post.created_at).toLocaleDateString()}
+              </span>
+              <Separator orientation="vertical" className="h-4 bg-gray-700" />
+              <span className="flex items-center gap-1">
+                <Tag className="h-4 w-4 mr-1 text-emerald-400" />
+                {post.type}
+              </span>
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-grow">
-            <p className="text-gray-300 line-clamp-3">{excerpt}</p>
+            <p className="text-gray-300 line-clamp-3">{descriptionpiece}</p>
             <div className="flex flex-wrap gap-2 mt-3">
               {categoryNames.map((category, idx) => (
                 <Badge key={idx} variant="outline" className="text-emerald-400 border-emerald-400/50">

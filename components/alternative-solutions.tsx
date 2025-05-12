@@ -26,7 +26,7 @@ export function AlternativeSolutions() {
         title: "High-Speed Rail",
         emissions: "0.29 tonnes CO₂",
         savings: "99%",
-        icon: ":bullettrain_side:",
+        icon: "🚄",
         image: "/pictures/Alternatives/TRN_HS2_Trains.jpg",
         features: [
           "Fastest ground transport option",
@@ -38,7 +38,7 @@ export function AlternativeSolutions() {
         title: "Electric Team Bus",
         emissions: "0.39 tonnes CO₂",
         savings: "97%",
-        icon: ":bus:",
+        icon: "🚌",
         image: "/pictures/Alternatives/electricbusscharfsinnsstock.webp",
         features: [
           "Greatly reduced emissions",
@@ -50,7 +50,7 @@ export function AlternativeSolutions() {
         title: "Team Train Charter",
         emissions: "0.43 tonnes CO₂",
         savings: "98%",
-        icon: ":train2:",
+        icon: "🚆",
         image: "/pictures/Alternatives/ev-train.webp",
         features: [
           "Lower emissions, comfortable for players",
@@ -248,7 +248,7 @@ export function AlternativeSolutions() {
           className="w-full"
         >
           <div className="flex justify-center">
-            <TabsList className="flex justify-center mb-8 p-1 bg-[#0f172a] rounded-full border border-gray-800">
+            <TabsList className="flex justify-center gap-2 mb-8 p-1 bg-[#0f172a] rounded-full border border-gray-800">
               {["transport", "energy", "offset"].map((tab) => (
                 <TabsTrigger
                   key={tab}
