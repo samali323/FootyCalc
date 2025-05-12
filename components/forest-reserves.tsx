@@ -196,12 +196,12 @@ export function ForestReserves() {
           className="w-full"
         >
           <div className="flex justify-center">
-            <TabsList className="flex justify-center mb-12 bg-transparent">
+            <TabsList className="flex flex-wrap justify-center mb-12 gap-2 bg-transparent">
               {["rainforests", "boreal", "marine"].map((tab) => (
                 <TabsTrigger
                   key={tab}
                   value={tab}
-                  className="tab-style-3 mx-1 px-6 py-3 bg-[#1e293b] data-[state=active]:bg-green-600 data-[state=active]:text-white flex items-center gap-2 rounded-lg"
+                  className="tab-style-3 px-4 sm:px-6 py-2 sm:py-3 bg-[#1e293b] data-[state=active]:bg-green-600 data-[state=active]:text-white flex items-center rounded-lg"
                 >
                   {tab === "rainforests" ? <TreePine className="h-4 w-4" /> : tab === "boreal" ? <Leaf className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
                   {tab === "rainforests" ? "Rainforests" : tab === "boreal" ? "Boreal Forests" : "Marine Carbon Sinks"}

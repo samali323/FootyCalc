@@ -134,30 +134,6 @@ export default function Home() {
       }
     }
 
-    const fetchMatches = async () => {
-      try {
-        const { data, error } = await supabase.from("matches").select("*")
-
-        if (error) throw error
-
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch leagues data")
-      }
-    }
-
-    const fetchTeams = async () => {
-      try {
-        const { data, error } = await supabase.from("teams").select("*")
-
-        if (error) throw error
-
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch leagues data")
-      }
-    }
-
-    fetchTeams()
-    fetchMatches()
     fetchLeaguesSeasons()
     fetchBlogs()
     fetchLeagues()
@@ -218,40 +194,6 @@ export default function Home() {
     }
   }, [])
 
-  // const blogPosts = [
-  //   {
-  //     id: 1,
-  //     title: "How Teams Are Reducing Their Carbon Footprint",
-  //     excerpt: "Leading football clubs are implementing innovative strategies to minimize their environmental impact.",
-  //     image: "/placeholder.svg?height=400&width=600",
-  //     category: "Sustainability",
-  //     date: "April 23, 2025",
-  //     author: "Emma Green",
-  //     authorImage: "/placeholder.svg?height=100&width=100",
-  //   },
-  //   {
-  //     id: 2,
-  //     title: "The Future of Sustainable Sports Travel",
-  //     excerpt: "New technologies are making team travel more eco-friendly without sacrificing performance.",
-  //     image: "/placeholder.svg?height=400&width=600",
-  //     category: "Innovation",
-  //     date: "April 20, 2025",
-  //     author: "Michael Torres",
-  //     authorImage: "/placeholder.svg?height=100&width=100",
-  //   },
-  //   {
-  //     id: 3,
-  //     title: "Carbon Offsetting in Professional Sports",
-  //     excerpt: "How leagues around the world are implementing carbon offset programs to neutralize emissions.",
-  //     image: "/placeholder.svg?height=400&width=600",
-  //     category: "Policy",
-  //     date: "April 15, 2025",
-  //     author: "Sarah Johnson",
-  //     authorImage: "/placeholder.svg?height=100&width=100",
-  //   },
-  // ]
-
-
   // Animated text for headings
   const words = ["Sustainable", "Eco-friendly", "Green", "Clean"]
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
@@ -276,6 +218,7 @@ export default function Home() {
             autoPlay
             muted
             loop
+            preload="metadata"
             playsInline // Add this to ensure autoplay on mobile Safari
             className="w-full h-full object-cover"
             poster="/placeholder.svg?height=1080&width=1920"
@@ -284,7 +227,7 @@ export default function Home() {
             <source src="/videos/2657260-uhd_3840_2160_24fps.mp4" type="video/mp4" />
           </video>
           {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/35 to-black/20"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/50 to-black/40"></div>
         </div>
 
         <div className="relative z-10 container mx-auto px-4 h-full flex flex-col justify-center items-center text-center">
@@ -304,7 +247,7 @@ export default function Home() {
               </motion.div>
               <h1 className="text-4xl md:text-6xl font-bold text-white">
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-600">
-                  Sports Emissions
+                  Sport Ecolytics
                 </span>
               </h1>
             </div>
@@ -800,10 +743,12 @@ export default function Home() {
 
             <div className="mt-12 text-center">
               <motion.div whileHover={{ y: -5 }}>
-                <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
-                  View All Articles
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+                <Link href="/view">
+                  <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                    View All Articles
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
               </motion.div>
             </div>
           </div>
@@ -825,7 +770,7 @@ export default function Home() {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-              Ready to Track Your <span className="text-emerald-400">Sports Emissions</span>?
+              Ready to Track Your <span className="text-emerald-400">Sport Ecolytics</span>?
             </h2>
             <p className="text-xl text-gray-300 mb-8">
               Join hundreds of sports organizations worldwide in the mission to reduce carbon footprint
@@ -889,7 +834,7 @@ export default function Home() {
               >
                 <Leaf className="h-10 w-10 text-emerald-400 mr-3" />
               </motion.div>
-              <h2 className="text-3xl font-bold text-white">Sports Emissions</h2>
+              <h2 className="text-3xl font-bold text-white">Sports Ecolytics</h2>
             </motion.div>
 
             {/* Platform Links - Centered and Enhanced */}
@@ -952,7 +897,7 @@ export default function Home() {
 
             {/* Copyright */}
             <div className="text-center text-gray-500 text-sm">
-              <p>&copy; {new Date().getFullYear()} Sports Emissions. All rights reserved.</p>
+              <p>&copy; {new Date().getFullYear()} Sports Ecolytics. All rights reserved.</p>
             </div>
           </div>
         </div>

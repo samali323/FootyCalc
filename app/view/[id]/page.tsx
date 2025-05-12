@@ -127,25 +127,25 @@ const BlogPost: React.FC = () => {
   const parsedTags = typeof blog.tags === 'string' ? JSON.parse(blog.tags) : blog.tags || [];
 
   return (
-    <div className="p-6 space-y-6 mx-auto">
+    <div className="p-4 sm:p-6 space-y-6 mx-auto">
       {/* Back Button and Toggle Publish Button */}
       <div className="flex items-center justify-between">
         <button
-          onClick={() => router.push("/")}
-          className="flex items-center text-emerald-400 hover:text-emerald-300 bg-gray-800/50 hover:bg-gray-800/75 px-4 py-2 rounded-lg transition-all duration-200 group"
+          onClick={() => router.back()}
+          className="flex items-center text-sm sm:text-base text-emerald-400 hover:text-emerald-300 bg-gray-800/50 hover:bg-gray-800/75 px-4 py-2 rounded-lg transition-all duration-200 group"
         >
           <ChevronLeft className="h-5 w-5 mr-2 group-hover:-translate-x-1 transition-transform duration-200" />
-          Back to Blog Management
+          Back to Blogs
         </button>
       </div>
 
       {/* Title */}
-      <h1 className="text-3xl font-bold text-white tracking-tight leading-tight">
+      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight leading-tight">
         {blog.title}
       </h1>
 
       {/* Meta Information */}
-      <div className="flex flex-wrap items-center space-x-4 text-gray-400 text-sm">
+      <div className="flex flex-wrap items-center gap-4 text-gray-400 text-sm">
         <p className="flex items-center">
           <Calendar className="h-4 w-4 mr-2 text-emerald-400" />
           Published: <span className="text-gray-300 ml-2">{new Date(blog.created_at).toLocaleDateString()}</span>
@@ -176,7 +176,7 @@ const BlogPost: React.FC = () => {
 
       {/* Cover Image */}
       {blog.cover_image && (
-        <div className="relative rounded-xl overflow-hidden shadow-lg m-8">
+        <div className="relative rounded-xl overflow-hidden shadow-lg sm:m-8">
           <img
             src={blog.cover_image}
             alt={`Cover for ${blog.title}`}
@@ -188,7 +188,7 @@ const BlogPost: React.FC = () => {
 
       {/* Content */}
       <div className="prose prose-invert max-w-none text-gray-200 space-y-6">
-        <h3 className="text-xl font-bold text-white tracking-wide flex items-center gap-2 ml-10">
+        <h3 className="text-base sm:text-xl font-bold text-white tracking-wide flex items-center gap-2 ml-4 sm:ml-10">
           <div className="h-6 w-1 bg-emerald-500 rounded-full"></div>
           Blog Description
         </h3>
